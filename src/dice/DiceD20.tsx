@@ -82,8 +82,17 @@ export function DiceD20({ rolling, durationMs = 520, onSettled, onError }: Props
         new THREE.LineBasicMaterial({ color: 0x1a1a1a })
       )
       fallback.add(fallbackEdges)
+      // Keep a simple object visible at all times until (and unless) the GLB successfully loads.
       root.clear()
       root.add(fallback)
+      // Add a cube helper too (debug/visibility sanity check)
+      const cube = new THREE.Mesh(
+        new THREE.BoxGeometry(0.85, 0.85, 0.85),
+        new THREE.MeshStandardMaterial({ color: 0x7c5cff, roughness: 0.45, metalness: 0.15 })
+      )
+      cube.position.set(0, -1.1, 0)
+      root.add(cube)
+
       root.rotation.set(0.7, 0.9, 0.1)
 
       // Load dice model
@@ -120,6 +129,10 @@ export function DiceD20({ rolling, durationMs = 520, onSettled, onError }: Props
 
       const tick = () => {
         if (!renderer.current || !scene.current || !camera.current) return
+        // Slow idle spin so we can visually confirm rendering
+        if (group.current) {
+          group.current.rotation.y += 0.01
+        }
         renderer.current.render(scene.current, camera.current)
         rafRef.current = requestAnimationFrame(tick)
       }
