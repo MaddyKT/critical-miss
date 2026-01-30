@@ -73,13 +73,25 @@ export function DiceD20({ rolling, durationMs = 520, onSettled, onError }: Props
       camera.current = cam
       group.current = root
 
+      // Always show *something* immediately (prevents "blank box" while the model loads).
+      const fallbackGeo = new THREE.IcosahedronGeometry(1.1, 0)
+      const fallbackMat = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.35, metalness: 0.1 })
+      const fallback = new THREE.Mesh(fallbackGeo, fallbackMat)
+      const fallbackEdges = new THREE.LineSegments(
+        new THREE.EdgesGeometry(fallbackGeo),
+        new THREE.LineBasicMaterial({ color: 0x1a1a1a })
+      )
+      fallback.add(fallbackEdges)
+      root.clear()
+      root.add(fallback)
+      root.rotation.set(0.7, 0.9, 0.1)
+
       // Load dice model
       const loader = new GLTFLoader()
+      const modelUrl = `${import.meta.env.BASE_URL}models/dice-set.glb`
       loader.load(
-        '/models/dice-set.glb',
+        modelUrl,
         (gltf) => {
-          // Most reliable: render the whole scene so we definitely see *something*.
-          // We'll narrow to the d20 mesh once we identify node names.
           const chosen = gltf.scene.clone(true)
 
           const box = new THREE.Box3().setFromObject(chosen)
@@ -100,17 +112,9 @@ export function DiceD20({ rolling, durationMs = 520, onSettled, onError }: Props
         },
         undefined,
         (e) => {
-          console.error('Dice model load failed', e)
+          console.error('Dice model load failed', modelUrl, e)
           report('Could not load dice model (GLB).')
-          // Fallback: simple icosahedron
-          const geo = new THREE.IcosahedronGeometry(1.1, 0)
-          const mat = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.35, metalness: 0.1 })
-          const d20 = new THREE.Mesh(geo, mat)
-          const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x1a1a1a }))
-          d20.add(edges)
-          root.clear()
-          root.add(d20)
-          root.rotation.set(0.7, 0.9, 0.1)
+          // Keep fallback in place
         }
       )
 
