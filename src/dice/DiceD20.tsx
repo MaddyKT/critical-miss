@@ -49,6 +49,19 @@ export function DiceD20({ rolling, durationMs = 520, onSettled, onError }: Props
       el.innerHTML = ''
       el.appendChild(r.domElement)
 
+      // Some devices/browsers will "lose" the WebGL context (canvas goes black).
+      // If that happens, report + allow the parent to fall back to 2D.
+      const onContextLost = (ev: Event) => {
+        try {
+          ;(ev as any).preventDefault?.()
+        } catch {
+          // ignore
+        }
+        console.error('WebGL context lost')
+        report('3D dice WebGL context lost. Switching to 2D.')
+      }
+      r.domElement.addEventListener('webglcontextlost', onContextLost as any, false)
+
       const root = new THREE.Group()
       sc.add(root)
 
@@ -141,6 +154,11 @@ export function DiceD20({ rolling, durationMs = 520, onSettled, onError }: Props
       return () => {
         if (rafRef.current) cancelAnimationFrame(rafRef.current)
         if (settleTimer.current) window.clearTimeout(settleTimer.current)
+        try {
+          r.domElement.removeEventListener('webglcontextlost', onContextLost as any)
+        } catch {
+          // ignore
+        }
         try {
           r.dispose()
         } catch {
