@@ -8,7 +8,7 @@ export function loadSave(): SaveFile {
     const raw3 = localStorage.getItem(KEY_V3)
     if (raw3) {
       const parsed = JSON.parse(raw3)
-      if (parsed && parsed.version === 3) return parsed
+      if (parsed && parsed.version === 3) return normalizeV3(parsed as SaveFile)
     }
 
     // Legacy: v2 save exists, but isn't compatible (new campaign state). Start fresh.
@@ -22,6 +22,27 @@ export function loadSave(): SaveFile {
   } catch {
     return { version: 3, character: null, log: [], stage: { kind: 'idle' } }
   }
+}
+
+function normalizeV3(save: SaveFile): SaveFile {
+  if (!save.character) return save
+  const c: any = save.character
+  // Backfill fields added after v3 initial rollout.
+  if (!Array.isArray(c.inventory)) c.inventory = []
+  if (!Array.isArray(c.companions)) c.companions = []
+  if (typeof c.lastSceneId !== 'string') c.lastSceneId = null
+
+  // hit dice
+  if (![6, 8, 10, 12].includes(c.hitDieSize)) c.hitDieSize = 8
+  if (typeof c.hitDiceMax !== 'number') c.hitDiceMax = 6
+  if (typeof c.hitDiceRemaining !== 'number') c.hitDiceRemaining = c.hitDiceMax
+
+  // spell slots
+  if (typeof c.spellSlotsMax !== 'number') c.spellSlotsMax = 0
+  if (typeof c.spellSlotsRemaining !== 'number') c.spellSlotsRemaining = c.spellSlotsMax
+
+  save.character = c
+  return save
 }
 
 export function saveGame(save: SaveFile) {
