@@ -226,19 +226,72 @@ export function resolveRoll(
   const entries: GameLogEntry[] = []
   const breakdown = `d20 ${roll} + ${choice.stat} ${bonus >= 0 ? `+${bonus}` : bonus} = ${total} vs DC ${choice.dc}`
 
+  const hpBefore = c0.hp
+
+  const applyOutcome = (r: { c: Character; text: string; logs?: string[] }) => {
+    let cNext = r.c
+    entries.push(log(cNext.day, r.text))
+    for (const extra of r.logs ?? []) entries.push(log(cNext.day, extra))
+
+    // If an outcome causes HP loss due to an attacker, trigger combat instead of direct damage.
+    // (Environmental damage like falling, cold water, fire, etc. can still be direct.)
+    const hpLoss = hpBefore - cNext.hp
+    const alreadyCombat = Boolean((cNext.flags as any)?.__startCombat)
+
+    if (!alreadyCombat && hpLoss > 0 && shouldTriggerCombat(scene, r.text)) {
+      // restore HP; the fight will determine damage
+      cNext = { ...cNext, hp: hpBefore }
+
+      const enemyKind = enemyKindForScene(scene)
+      ;(cNext.flags as any).__startCombat = startCombat({
+        c: cNext,
+        enemyKind,
+        onWin: { text: 'You survive the violence and the world keeps turning.', logs: ['Combat won'] },
+        onLose: { text: 'You lose the fight. The consequences are immediate and personal.', logs: ['Combat lost'] },
+        onFlee: { text: 'You escape. The story continues with your breath still in your chest.', logs: ['Fled combat'] },
+      })
+
+      entries.push(log(cNext.day, 'Combat triggered.'))
+    }
+
+    return cNext
+  }
+
   if (success) {
     const r = choice.onSuccess(c)
-    c = r.c
-    entries.push(log(c.day, r.text))
-    for (const extra of r.logs ?? []) entries.push(log(c.day, extra))
+    c = applyOutcome(r)
     return { c, log: entries, outcomeText: r.text, breakdown, roll, success }
   } else {
     const r = choice.onFail(c)
-    c = r.c
-    entries.push(log(c.day, r.text))
-    for (const extra of r.logs ?? []) entries.push(log(c.day, extra))
+    c = applyOutcome(r)
     return { c, log: entries, outcomeText: r.text, breakdown, roll, success }
   }
+}
+
+function shouldTriggerCombat(scene: Scene, text: string) {
+  const t = `${scene.category} ${scene.title} ${text}`.toLowerCase()
+
+  // Exclusions: obvious environment / non-combat harm
+  if (t.includes('falling masonry') || t.includes('freezing water') || t.includes('smoke') || t.includes('fire')) return false
+  if (t.includes('paper') || t.includes('bureaucr') || t.includes('paragraph bites')) return false
+  if (t.includes('emotional')) return false
+
+  // Keywords that imply an attacker
+  const attacker = /(hit|hits|jab|jabs|stab|stabs|punch|punches|bite|bites|ambush|blade|swing|swings|attack)/
+  if (attacker.test(t)) return true
+
+  // Also treat some categories as likely combat when HP is on the line.
+  if (t.includes('tavern') || t.includes('street') || t.includes('road') || t.includes('manor')) return true
+
+  return false
+}
+
+function enemyKindForScene(scene: Scene): 'thug' | 'hound' | 'rival' {
+  const cat = scene.category.toLowerCase()
+  if (cat.includes('tavern') || cat.includes('street')) return 'thug'
+  if (cat.includes('manor')) return 'rival'
+  if (cat.includes('road') || cat.includes('ruins') || cat.includes('vault')) return 'hound'
+  return 'thug'
 }
 
 function setNext(c: Character, nextSceneId: string | null): Character {
