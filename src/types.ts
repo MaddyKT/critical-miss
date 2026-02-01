@@ -11,6 +11,18 @@ export type Stats = {
   CHA: number
 }
 
+export type CampaignArcId = 'taxman' | 'internship' | 'mimic'
+
+export type CampaignState = {
+  arcId: CampaignArcId
+  /** 1..3 */
+  act: 1 | 2 | 3
+  /** 0..100 */
+  progress: number
+  /** lightweight continuity flags scoped to the arc */
+  flags: Record<string, boolean>
+}
+
 export type Character = {
   name: string
   sex: Sex
@@ -24,9 +36,21 @@ export type Character = {
   maxHp: number
   gold: number
 
+  // Resource systems
+  hitDieSize: 6 | 8 | 10 | 12
+  hitDiceMax: number
+  hitDiceRemaining: number
+
+  /** spell slots (DnD-ish): cantrips unlimited; slots refresh on long rest */
+  spellSlotsMax: number
+  spellSlotsRemaining: number
+
   stats: Stats
   flags: Record<string, boolean>
   nextSceneId?: string | null
+
+  campaign: CampaignState
+
   party: {
     inParty: boolean
     members: string[]
@@ -73,7 +97,7 @@ export type UIStage =
   | { kind: 'outcome'; scene: Scene; outcomeText: string }
 
 export type SaveFile = {
-  version: 2
+  version: 3
   character: Character | null
   log: GameLogEntry[]
   stage: UIStage

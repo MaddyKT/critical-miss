@@ -6,6 +6,7 @@ import { clearSave, loadSave, saveGame } from './storage'
 import { pick } from './utils'
 import { ModalCard } from './components/ModalCard'
 import { generateBackground, makeNewCharacter, nextTurnScene, resolveRoll, chooseToRoll } from './game2'
+import { longRest, shortRest } from './rest'
 import { DiceModal } from './dice/DiceModal'
 
 const CLASSES: ClassName[] = ['Rogue', 'Wizard', 'Barbarian', 'Fighter', 'Paladin', 'Druid']
@@ -13,9 +14,9 @@ const ALIGNMENTS: Array<'Good' | 'Neutral' | 'Evil'> = ['Good', 'Neutral', 'Evil
 
 export default function App() {
   const [save, setSave] = useState<SaveFile>(() => {
-    const s = loadSave() as SaveFile
-    if (!s || s.version !== 2) return { version: 2, character: null, log: [], stage: { kind: 'idle' } }
-    return s
+    const s = loadSave() as any
+    if (!s || s.version !== 3) return { version: 3, character: null, log: [], stage: { kind: 'idle' } }
+    return s as SaveFile
   })
 
   const [sex, setSex] = useState<Sex>('Female')
@@ -24,6 +25,11 @@ export default function App() {
 
   const [packsOpen, setPacksOpen] = useState(false)
   const [activePack, setActivePack] = useState<ScenarioPack>(() => SCENARIO_PACKS[0])
+
+  const [restOpen, setRestOpen] = useState<null | { kind: 'short' } | { kind: 'long' }>(null)
+  const [restDiceCount, setRestDiceCount] = useState(1)
+  const [restRolls, setRestRolls] = useState<number[]>([])
+  const [restConsequenceRoll, setRestConsequenceRoll] = useState<number | null>(null)
 
   useEffect(() => {
     saveGame(save)
@@ -42,7 +48,7 @@ export default function App() {
   function newGame() {
     const c = makeNewCharacter({ sex, className, alignment })
     const bg = generateBackground(c)
-    setSave({ version: 2, character: c, log: [{ id: `log_${Date.now()}`, day: 0, text: bg }], stage: { kind: 'idle' } })
+    setSave({ version: 3, character: c, log: [{ id: `log_${Date.now()}`, day: 0, text: bg }], stage: { kind: 'idle' } })
   }
 
   function nextTurn() {
@@ -78,6 +84,47 @@ export default function App() {
     setSave((prev) => ({ ...prev, stage: { kind: 'idle' } }))
   }
 
+  function openShortRest() {
+    if (!character) return
+    setRestOpen({ kind: 'short' })
+    setRestDiceCount(1)
+    setRestRolls([])
+    setRestConsequenceRoll(null)
+  }
+
+  function openLongRest() {
+    if (!character) return
+    setRestOpen({ kind: 'long' })
+    setRestDiceCount(1)
+    setRestRolls([])
+    setRestConsequenceRoll(null)
+  }
+
+  function rollRestDice() {
+    if (!character || !restOpen) return
+    const count = Math.max(1, Math.min(restDiceCount, character.hitDiceRemaining || 1))
+    const die = character.hitDieSize
+    const rolls = Array.from({ length: count }, () => 1 + Math.floor(Math.random() * die))
+    setRestRolls(rolls)
+    setRestConsequenceRoll(1 + Math.floor(Math.random() * 100))
+  }
+
+  function applyRest() {
+    if (!character || !restOpen) return
+    if (!restConsequenceRoll) return
+
+    if (restOpen.kind === 'short') {
+      const used = restRolls.length ? restRolls : [1]
+      const r = shortRest(character, used, restConsequenceRoll)
+      setSave((prev) => ({ ...prev, character: r.c, log: [...prev.log, ...r.log] }))
+    } else {
+      const r = longRest(character, restConsequenceRoll)
+      setSave((prev) => ({ ...prev, character: r.c, log: [...prev.log, ...r.log] }))
+    }
+
+    setRestOpen(null)
+  }
+
   return (
     <div className="shell">
       <header className="top">
@@ -94,7 +141,7 @@ export default function App() {
             onClick={() => {
               if (confirm('Wipe save and restart?')) {
                 clearSave()
-                setSave({ version: 2, character: null, log: [], stage: { kind: 'idle' } })
+                setSave({ version: 3, character: null, log: [], stage: { kind: 'idle' } })
               }
             }}
           >
@@ -190,9 +237,15 @@ export default function App() {
                 </div>
               ))}
             </div>
-            <div className="choices">
+            <div className="choices" style={{ display: 'flex', gap: 10 }}>
               <button className="choice" onClick={nextTurn}>
                 + Turn
+              </button>
+              <button className="choice" onClick={openShortRest} disabled={save.stage.kind !== 'idle' || character.hitDiceRemaining <= 0}>
+                Short Rest ({character.hitDiceRemaining} HD)
+              </button>
+              <button className="choice" onClick={openLongRest} disabled={save.stage.kind !== 'idle'}>
+                Long Rest
               </button>
             </div>
           </section>
@@ -228,6 +281,71 @@ export default function App() {
               <button className="cm_button" onClick={closeOutcome}>
                 OK
               </button>
+            </ModalCard>
+          ) : null}
+
+          {restOpen ? (
+            <ModalCard category={'Rest'} title={restOpen.kind === 'short' ? 'Short Rest' : 'Long Rest'}>
+              {restOpen.kind === 'short' ? (
+                <>
+                  <div style={{ marginBottom: 10 }}>
+                    Spend hit dice to heal. You have <b>{character.hitDiceRemaining}</b> remaining.
+                  </div>
+
+                  <div className="fine" style={{ marginBottom: 8 }}>
+                    Healing roll: {restDiceCount}d{character.hitDieSize} + CON mod per die.
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
+                    <label className="fine" style={{ minWidth: 70 }}>Dice</label>
+                    <input
+                      type="range"
+                      min={1}
+                      max={Math.max(1, character.hitDiceRemaining)}
+                      value={Math.min(restDiceCount, Math.max(1, character.hitDiceRemaining))}
+                      onChange={(e) => setRestDiceCount(Number(e.target.value))}
+                      style={{ flex: 1 }}
+                    />
+                    <div style={{ width: 44, textAlign: 'right', fontWeight: 900 }}>{Math.min(restDiceCount, Math.max(1, character.hitDiceRemaining))}</div>
+                  </div>
+
+                  {restRolls.length ? (
+                    <div className="fine" style={{ marginBottom: 10 }}>
+                      Rolled: {restRolls.join(', ')}
+                    </div>
+                  ) : null}
+
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button className="cm_button" onClick={rollRestDice}>Roll</button>
+                    <button className="cm_button" onClick={applyRest} disabled={!restConsequenceRoll}>
+                      Apply
+                    </button>
+                    <button className="cm_link" onClick={() => setRestOpen(null)}>Cancel</button>
+                  </div>
+
+                  <div className="fine" style={{ marginTop: 10, opacity: 0.8 }}>
+                    Short rest advances time and has a small chance of consequences.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ marginBottom: 10 }}>
+                    Long rest fully heals and restores spell slots, but is riskier.
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button className="cm_button" onClick={rollRestDice}>Roll consequence</button>
+                    <button className="cm_button" onClick={applyRest} disabled={!restConsequenceRoll}>
+                      Long Rest
+                    </button>
+                    <button className="cm_link" onClick={() => setRestOpen(null)}>Cancel</button>
+                  </div>
+
+                  <div className="fine" style={{ marginTop: 10, opacity: 0.8 }}>
+                    Long rest advances more time and can trigger consequences.
+                  </div>
+                </>
+              )}
             </ModalCard>
           ) : null}
         </main>

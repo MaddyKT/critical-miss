@@ -1,5 +1,6 @@
-import type { Character, GameLogEntry, Scene, SceneChoice, PendingRoll, Stats } from './types'
+import type { CampaignArcId, CampaignState, Character, GameLogEntry, Scene, SceneChoice, PendingRoll, Stats } from './types'
 import { clamp, d20, modFromStat, pick, uid } from './utils'
+import { mimicFinaleScene } from './game2.mimicFinale'
 
 const NAME_FIRST_F: string[] = ['Astra', 'Lilith', 'Morgana', 'Nyx', 'Seraphine', 'Vera', 'Tess', 'Rowan']
 const NAME_FIRST_M: string[] = ['Bromley', 'Thorn', 'Garrick', 'Roland', 'Osric', 'Dorian', 'Milo', 'Cedric']
@@ -26,6 +27,17 @@ export function makeNewCharacter(input: {
   const stats: Stats = input.stats ?? ({ ...base, ...bumps[input.className] } as Stats)
   const maxHp = 10 + modFromStat(stats.CON) + (input.className === 'Barbarian' ? 4 : 0)
 
+  const hitDieSize: Character['hitDieSize'] =
+    input.className === 'Wizard'
+      ? 6
+      : input.className === 'Rogue' || input.className === 'Druid'
+        ? 8
+        : input.className === 'Fighter' || input.className === 'Paladin'
+          ? 10
+          : 12
+
+  const spellSlotsMax = input.className === 'Wizard' || input.className === 'Druid' ? 2 : 0
+
   return {
     name: (input.name?.trim() || '').length ? input.name!.trim() : randomName(input.sex),
     sex: input.sex,
@@ -39,9 +51,19 @@ export function makeNewCharacter(input: {
     maxHp,
     gold: 12,
 
+    hitDieSize,
+    hitDiceMax: 6,
+    hitDiceRemaining: 6,
+
+    spellSlotsMax,
+    spellSlotsRemaining: spellSlotsMax,
+
     stats,
     flags: {},
     nextSceneId: null,
+
+    campaign: newCampaign(),
+
     party: { inParty: false, members: [] },
   }
 }
@@ -60,7 +82,9 @@ export function generateBackground(c: Character) {
     'trained by monks until you got banned for “excessive vibes”',
     'born during a lightning storm that definitely meant something ominous',
   ]
-  return `You are a ${c.sex.toLowerCase()} ${c.className.toLowerCase()} who was ${pick(hooks)}.`
+
+  const arc = ARC_META[c.campaign.arcId]
+  return `You are a ${c.sex.toLowerCase()} ${c.className.toLowerCase()} who was ${pick(hooks)}.\n\nCurrent campaign: ${arc.title} (Act ${c.campaign.act}).`
 }
 
 export function nextTurnScene(c: Character): Scene {
@@ -71,18 +95,18 @@ export function nextTurnScene(c: Character): Scene {
     return getSceneById(id)
   }
 
-  // Otherwise pick a fresh scene. (Entry points only.)
-  const entries: Array<{ id: string; weight: number }> = [
-    { id: 'tavern.dripping_goblet', weight: 3 },
-    { id: 'tavern.taxman', weight: 2 },
-    { id: 'tavern.mlm_pitch', weight: 2 },
-    { id: 'market.potion', weight: 2 },
-    { id: 'dungeon.mimic_intro', weight: 2 },
-    { id: 'tower.internship', weight: 2 },
-  ]
+  // Narrative continuity: choose scenes from a single campaign arc.
+  const arc = c.campaign.arcId
+  const act = c.campaign.act
 
-  const pickId = weightedPick(entries)
-  return getSceneById(pickId)
+  const pool = ARC_SCENE_POOLS[arc][act]
+
+  // Soft force a "finale" once progress is high.
+  if (act === 3 && c.campaign.progress >= 85) {
+    return getSceneById(ARC_FINALES[arc])
+  }
+
+  return getSceneById(weightedPick(pool))
 }
 
 export function chooseToRoll(scene: Scene, choiceId: string): PendingRoll {
@@ -109,6 +133,9 @@ export function resolveRoll(
   // advance time on resolution
   c.day += 1
 
+  // baseline story momentum: every scene nudges the arc forward a bit.
+  c = advanceArc(c, 8)
+
   const entries: GameLogEntry[] = []
   const breakdown = `d20 ${roll} + ${choice.stat} ${bonus >= 0 ? `+${bonus}` : bonus} = ${total} vs DC ${choice.dc}`
 
@@ -127,6 +154,93 @@ export function resolveRoll(
 
 function setNext(c: Character, nextSceneId: string | null): Character {
   return { ...c, nextSceneId }
+}
+
+function setArcFlag(c: Character, key: string, value = true): Character {
+  return { ...c, campaign: { ...c.campaign, flags: { ...c.campaign.flags, [key]: value } } }
+}
+
+function advanceArc(c: Character, delta: number): Character {
+  const nextProgress = clamp(c.campaign.progress + delta, 0, 100)
+  const nextAct: 1 | 2 | 3 = nextProgress >= 70 ? 3 : nextProgress >= 35 ? 2 : 1
+  return { ...c, campaign: { ...c.campaign, progress: nextProgress, act: nextAct } }
+}
+
+function newCampaign(): CampaignState {
+  const arcId = pick(Object.keys(ARC_META) as CampaignArcId[])
+  return { arcId, act: 1, progress: 0, flags: {} }
+}
+
+const ARC_META: Record<CampaignArcId, { title: string; blurb: string }> = {
+  taxman: {
+    title: 'The Crown vs. Your Vibes',
+    blurb: 'An auditor has taken an unholy interest in your finances.',
+  },
+  internship: {
+    title: 'Unpaid, Unholy Internship',
+    blurb: 'A wizard has offered you “experience.” You will pay in suffering.',
+  },
+  mimic: {
+    title: 'Chest With Feelings',
+    blurb: 'A mimic has chosen you. That is not a compliment.',
+  },
+}
+
+const ARC_SCENE_POOLS: Record<CampaignArcId, Record<1 | 2 | 3, Array<{ id: string; weight: number }>>> = {
+  taxman: {
+    1: [
+      { id: 'tavern.taxman', weight: 5 },
+      { id: 'street.paperwork', weight: 2 },
+      { id: 'tavern.dripping_goblet', weight: 1 },
+    ],
+    2: [
+      { id: 'street.paperwork', weight: 5 },
+      { id: 'court.day', weight: 3 },
+      { id: 'tavern.dripping_goblet', weight: 1 },
+    ],
+    3: [
+      { id: 'court.day', weight: 6 },
+      { id: 'tavern.dripping_goblet', weight: 1 },
+    ],
+  },
+  internship: {
+    1: [
+      { id: 'tower.internship', weight: 5 },
+      { id: 'lab.safety', weight: 2 },
+      { id: 'tavern.dripping_goblet', weight: 1 },
+    ],
+    2: [
+      { id: 'lab.safety', weight: 5 },
+      { id: 'fallout.jar', weight: 3 },
+      { id: 'tavern.dripping_goblet', weight: 1 },
+    ],
+    3: [
+      { id: 'fallout.jar', weight: 6 },
+      { id: 'tavern.dripping_goblet', weight: 1 },
+    ],
+  },
+  mimic: {
+    1: [
+      { id: 'dungeon.mimic_intro', weight: 5 },
+      { id: 'camp.mimic_followup', weight: 2 },
+      { id: 'tavern.dripping_goblet', weight: 1 },
+    ],
+    2: [
+      { id: 'camp.mimic_followup', weight: 5 },
+      { id: 'dungeon.mimic_intro', weight: 1 },
+      { id: 'tavern.dripping_goblet', weight: 1 },
+    ],
+    3: [
+      { id: 'camp.mimic_finale', weight: 6 },
+      { id: 'tavern.dripping_goblet', weight: 1 },
+    ],
+  },
+}
+
+const ARC_FINALES: Record<CampaignArcId, string> = {
+  taxman: 'court.day',
+  internship: 'fallout.jar',
+  mimic: 'camp.mimic_finale',
 }
 
 function scene(id: string, category: string, title: string, body: string, choices: SceneChoice[]): Scene {
@@ -150,6 +264,9 @@ function weightedPick(items: Array<{ id: string; weight: number }>) {
 }
 
 const SCENES: Record<string, Scene> = {
+  // Finale scenes are defined separately to keep the main file readable.
+  'camp.mimic_finale': mimicFinaleScene({ setArcFlag, advanceArc }),
+
   'tavern.dripping_goblet': scene(
     'tavern.dripping_goblet',
     'Tavern',
@@ -195,24 +312,24 @@ const SCENES: Record<string, Scene> = {
         text: 'Confess everything',
         stat: 'WIS',
         dc: 12,
-        onSuccess: (ch) => ({ c: setNext({ ...ch, xp: ch.xp + 3 }, 'street.paperwork'), text: 'You confess only plausible crimes. He nods like a man enjoying a list. +3 XP.' }),
-        onFail: (ch) => ({ c: setNext({ ...ch, gold: clamp(ch.gold - 2, 0, 999999), xp: ch.xp + 1 }, 'street.paperwork'), text: 'You accidentally invent a felony mid-sentence. He writes it down. -2 gold, +1 XP.' }),
+        onSuccess: (ch) => ({ c: setNext(advanceArc(setArcFlag({ ...ch, xp: ch.xp + 3 }, 'taxman_met'), 12), 'street.paperwork'), text: 'You confess only plausible crimes. He nods like a man enjoying a list. +3 XP.' }),
+        onFail: (ch) => ({ c: setNext(advanceArc(setArcFlag({ ...ch, gold: clamp(ch.gold - 2, 0, 999999), xp: ch.xp + 1 }, 'taxman_met'), 10), 'street.paperwork'), text: 'You accidentally invent a felony mid-sentence. He writes it down. -2 gold, +1 XP.' }),
       },
       {
         id: 'bribe',
         text: 'Bribe him with sincerity',
         stat: 'CHA',
         dc: 14,
-        onSuccess: (ch) => ({ c: setNext({ ...ch, gold: clamp(ch.gold - 3, 0, 999999) }, 'street.paperwork'), text: 'He takes your coin and your handshake. You are now “friends,” which is somehow worse. -3 gold.' }),
-        onFail: (ch) => ({ c: setNext({ ...ch, gold: clamp(ch.gold - 5, 0, 999999) }, 'street.paperwork'), text: 'He takes your coin as “evidence.” You feel sponsored by anxiety. -5 gold.' }),
+        onSuccess: (ch) => ({ c: setNext(advanceArc(setArcFlag({ ...ch, gold: clamp(ch.gold - 3, 0, 999999) }, 'taxman_bribed'), 14), 'street.paperwork'), text: 'He takes your coin and your handshake. You are now “friends,” which is somehow worse. -3 gold.' }),
+        onFail: (ch) => ({ c: setNext(advanceArc(setArcFlag({ ...ch, gold: clamp(ch.gold - 5, 0, 999999) }, 'taxman_bribed'), 12), 'street.paperwork'), text: 'He takes your coin as “evidence.” You feel sponsored by anxiety. -5 gold.' }),
       },
       {
         id: 'between',
         text: 'Explain you’re “between incomes”',
         stat: 'CHA',
         dc: 13,
-        onSuccess: (ch) => ({ c: setNext({ ...ch, xp: ch.xp + 2 }, 'street.paperwork'), text: 'You spin a tragic backstory involving a cursed wallet. His eyes glisten. +2 XP.' }),
-        onFail: (ch) => ({ c: setNext({ ...ch, xp: ch.xp + 1 }, 'street.paperwork'), text: 'He asks for references. You cite a barstool. It does not help. +1 XP.' }),
+        onSuccess: (ch) => ({ c: setNext(advanceArc(setArcFlag({ ...ch, xp: ch.xp + 2 }, 'taxman_met'), 11), 'street.paperwork'), text: 'You spin a tragic backstory involving a cursed wallet. His eyes glisten. +2 XP.' }),
+        onFail: (ch) => ({ c: setNext(advanceArc(setArcFlag({ ...ch, xp: ch.xp + 1 }, 'taxman_met'), 9), 'street.paperwork'), text: 'He asks for references. You cite a barstool. It does not help. +1 XP.' }),
       },
     ]
   ),
@@ -228,16 +345,16 @@ const SCENES: Record<string, Scene> = {
         text: 'Forge it',
         stat: 'DEX',
         dc: 15,
-        onSuccess: (ch) => ({ c: setNext({ ...ch, gold: ch.gold + 6, xp: ch.xp + 3 }, 'court.day'), text: 'Your handwriting becomes a weapon. The forms look… legally alive. +6 gold, +3 XP.' }),
-        onFail: (ch) => ({ c: setNext({ ...ch, gold: clamp(ch.gold - 4, 0, 999999) }, 'court.day'), text: 'You spell your own name wrong. The paper judges you. -4 gold.' }),
+        onSuccess: (ch) => ({ c: setNext(advanceArc({ ...ch, gold: ch.gold + 6, xp: ch.xp + 3 }, 14), 'court.day'), text: 'Your handwriting becomes a weapon. The forms look… legally alive. +6 gold, +3 XP.' }),
+        onFail: (ch) => ({ c: setNext(advanceArc({ ...ch, gold: clamp(ch.gold - 4, 0, 999999) }, 10), 'court.day'), text: 'You spell your own name wrong. The paper judges you. -4 gold.' }),
       },
       {
         id: 'read',
         text: 'Actually read it',
         stat: 'INT',
         dc: 14,
-        onSuccess: (ch) => ({ c: setNext({ ...ch, gold: ch.gold + 4, xp: ch.xp + 2 }, 'court.day'), text: 'You find a loophole: “Adventuring expenses” are deductible. Your soul relaxes. +4 gold, +2 XP.' }),
-        onFail: (ch) => ({ c: setNext({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 'court.day'), text: 'The words swim. One paragraph bites you. -1 HP.' }),
+        onSuccess: (ch) => ({ c: setNext(advanceArc({ ...ch, gold: ch.gold + 4, xp: ch.xp + 2 }, 12), 'court.day'), text: 'You find a loophole: “Adventuring expenses” are deductible. Your soul relaxes. +4 gold, +2 XP.' }),
+        onFail: (ch) => ({ c: setNext(advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 9), 'court.day'), text: 'The words swim. One paragraph bites you. -1 HP.' }),
       },
       {
         id: 'eat',
@@ -295,8 +412,8 @@ const SCENES: Record<string, Scene> = {
         text: 'Open it normally',
         stat: 'DEX',
         dc: 13,
-        onSuccess: (ch) => ({ c: setNext({ ...ch, gold: ch.gold + 6, xp: ch.xp + 2 }, 'camp.mimic_followup'), text: 'You open it before it commits. Inside: coins and a tiny apology letter. +6 gold, +2 XP.' }),
-        onFail: (ch) => ({ c: setNext({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 'camp.mimic_followup'), text: 'It kisses your hand with teeth. You learn boundaries. -3 HP.' }),
+        onSuccess: (ch) => ({ c: setNext(advanceArc(setArcFlag({ ...ch, gold: ch.gold + 6, xp: ch.xp + 2 }, 'mimic_met'), 12), 'camp.mimic_followup'), text: 'You open it before it commits. Inside: coins and a tiny apology letter. +6 gold, +2 XP.' }),
+        onFail: (ch) => ({ c: setNext(advanceArc(setArcFlag({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 'mimic_met'), 10), 'camp.mimic_followup'), text: 'It kisses your hand with teeth. You learn boundaries. -3 HP.' }),
       },
       {
         id: 'compliment',
@@ -328,61 +445,29 @@ const SCENES: Record<string, Scene> = {
         text: 'Adopt it',
         stat: 'WIS',
         dc: 13,
-        onSuccess: (ch) => ({ c: { ...ch, xp: ch.xp + 3 }, text: 'You gain a weird companion: “Chesty.” You regret nothing. (Yet.) +3 XP.' }),
-        onFail: (ch) => ({ c: { ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp), xp: ch.xp + 2 }, text: 'It adopts you. You wake up briefly inside it. -2 HP, +2 XP.' }),
+        onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 3 }, 'mimic_adopted'), 14), text: 'You gain a weird companion: “Chesty.” You regret nothing. (Yet.) +3 XP.' }),
+        onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp), xp: ch.xp + 2 }, 'mimic_adopted'), 12), text: 'It adopts you. You wake up briefly inside it. -2 HP, +2 XP.' }),
       },
       {
         id: 'boundaries',
         text: 'Set boundaries',
         stat: 'CHA',
         dc: 12,
-        onSuccess: (ch) => ({ c: { ...ch, xp: ch.xp + 2 }, text: 'It agrees to bite only enemies and people who deserve it. You feel oddly proud. +2 XP.' }),
-        onFail: (ch) => ({ c: { ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, text: 'It agrees loudly, then bites your boot to test the rules. -1 HP.' }),
+        onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 2 }, 'mimic_boundaries'), 12), text: 'It agrees to bite only enemies and people who deserve it. You feel oddly proud. +2 XP.' }),
+        onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 'mimic_boundaries'), 10), text: 'It agrees loudly, then bites your boot to test the rules. -1 HP.' }),
       },
       {
         id: 'send',
         text: 'Send it away',
         stat: 'CHA',
         dc: 14,
-        onSuccess: (ch) => ({ c: { ...ch, gold: ch.gold + 1 }, text: 'It leaves you a single coin as closure. You feel… free? +1 gold.' }),
-        onFail: (ch) => ({ c: { ...ch, gold: clamp(ch.gold - 1, 0, 999999) }, text: 'It leaves anyway, but steals your socks. You are poorer in spirit. -1 gold.' }),
+        onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, gold: ch.gold + 1 }, 'mimic_sent_away'), 12), text: 'It leaves you a single coin as closure. You feel… free? +1 gold.' }),
+        onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, gold: clamp(ch.gold - 1, 0, 999999) }, 'mimic_sent_away'), 10), text: 'It leaves anyway, but steals your socks. You are poorer in spirit. -1 gold.' }),
       },
     ]
   ),
 
-  // ARC 05 — Potion
-  'market.potion': scene(
-    'market.potion',
-    'Market',
-    'Discount Elixir',
-    'A vendor sells “healing potions” in unmarked bottles. The liquid is the color of optimism and bad science.',
-    [
-      {
-        id: 'drink',
-        text: 'Drink it',
-        stat: 'CON',
-        dc: 13,
-        onSuccess: (ch) => ({ c: { ...ch, hp: clamp(ch.hp + 3, 0, ch.maxHp), gold: clamp(ch.gold - 2, 0, 999999) }, text: 'It works. Somehow. Your organs forgive you. +3 HP, -2 gold.' }),
-        onFail: (ch) => ({ c: { ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp), gold: clamp(ch.gold - 2, 0, 999999), xp: ch.xp + 1 }, text: 'You heal emotionally, not physically. -1 HP, -2 gold, +1 XP.' }),
-      },
-      {
-        id: 'ask',
-        text: 'Ask what’s inside',
-        stat: 'WIS',
-        dc: 12,
-        onSuccess: (ch) => ({ c: { ...ch, xp: ch.xp + 1, gold: clamp(ch.gold - 1, 0, 999999) }, text: '“Mostly mint,” he says. You hear “mostly” and flinch. -1 gold, +1 XP.' }),
-        onFail: (ch) => ({ c: { ...ch, xp: ch.xp + 1 }, text: 'He says “trade secret” and bites the bottle to show confidence. You learn fear. +1 XP.' }),
-      },
-      {
-        id: 'rat',
-        text: 'Test it on a rat',
-        stat: 'INT',
-        dc: 14,
-        onSuccess: (ch) => ({ c: { ...ch, xp: ch.xp + 2 }, text: 'The rat becomes swole and files a complaint. You respect it. +2 XP.' }),
-        onFail: (ch) => ({ c: { ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, text: 'The rat explodes politely. You feel judged by nature. -1 HP.' }),
-      },
-    ]
-  ),
+  // (Market potion scene removed from the main pool; we’ll reintroduce as a dedicated arc later.)
 
   // ARC 03 — Internship
   'tower.internship': scene(
@@ -396,16 +481,16 @@ const SCENES: Record<string, Scene> = {
         text: 'Accept',
         stat: 'WIS',
         dc: 12,
-        onSuccess: (ch) => ({ c: setNext({ ...ch, xp: ch.xp + 2 }, 'lab.safety'), text: 'You accept and immediately regret it professionally. +2 XP.' }),
-        onFail: (ch) => ({ c: setNext({ ...ch, xp: ch.xp + 1 }, 'lab.safety'), text: 'You sign a contract written in smoke. You cough once. +1 XP.' }),
+        onSuccess: (ch) => ({ c: setNext(advanceArc(setArcFlag({ ...ch, xp: ch.xp + 2 }, 'internship_signed'), 12), 'lab.safety'), text: 'You accept and immediately regret it professionally. +2 XP.' }),
+        onFail: (ch) => ({ c: setNext(advanceArc(setArcFlag({ ...ch, xp: ch.xp + 1 }, 'internship_signed'), 10), 'lab.safety'), text: 'You sign a contract written in smoke. You cough once. +1 XP.' }),
       },
       {
         id: 'negotiate',
         text: 'Negotiate pay',
         stat: 'CHA',
         dc: 14,
-        onSuccess: (ch) => ({ c: setNext({ ...ch, gold: ch.gold + 2 }, 'lab.safety'), text: 'You get a stipend and a helmet. The helmet is emotional support. +2 gold.' }),
-        onFail: (ch) => ({ c: setNext({ ...ch, gold: clamp(ch.gold - 1, 0, 999999) }, 'lab.safety'), text: 'He laughs in several languages. You buy lunch anyway. -1 gold.' }),
+        onSuccess: (ch) => ({ c: setNext(advanceArc(setArcFlag({ ...ch, gold: ch.gold + 2 }, 'internship_paid'), 14), 'lab.safety'), text: 'You get a stipend and a helmet. The helmet is emotional support. +2 gold.' }),
+        onFail: (ch) => ({ c: setNext(advanceArc(setArcFlag({ ...ch, gold: clamp(ch.gold - 1, 0, 999999) }, 'internship_signed'), 9), 'lab.safety'), text: 'He laughs in several languages. You buy lunch anyway. -1 gold.' }),
       },
       {
         id: 'steal',
@@ -484,72 +569,7 @@ const SCENES: Record<string, Scene> = {
     ]
   ),
 
-  // ARC 04 — Bard MLM
-  'tavern.mlm_pitch': scene(
-    'tavern.mlm_pitch',
-    'Tavern',
-    'Multi-Level Minstrelsy',
-    'A bard promises riches if you recruit “downline” bards. He says “passive income” like it’s a spell.',
-    [
-      {
-        id: 'buy',
-        text: 'Buy in',
-        stat: 'WIS',
-        dc: 12,
-        onSuccess: (ch) => ({ c: setNext({ ...ch, gold: clamp(ch.gold - 3, 0, 999999), xp: ch.xp + 1 }, 'street.recruit'), text: 'You receive pamphlets and shame. -3 gold, +1 XP.' }),
-        onFail: (ch) => ({ c: setNext({ ...ch, gold: clamp(ch.gold - 5, 0, 999999) }, 'street.recruit'), text: 'You accidentally buy the “premium” package. It includes more shame. -5 gold.' }),
-      },
-      {
-        id: 'expose',
-        text: 'Expose him',
-        stat: 'CHA',
-        dc: 14,
-        onSuccess: (ch) => ({ c: setNext({ ...ch, xp: ch.xp + 2 }, 'street.recruit'), text: 'The tavern cheers. The bard cries and tries to sell tissues. +2 XP.' }),
-        onFail: (ch) => ({ c: setNext({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 'street.recruit'), text: 'The crowd turns on you. They love scams if they feel smart. -1 HP.' }),
-      },
-      {
-        id: 'recruit',
-        text: 'Recruit him into your heist',
-        stat: 'CHA',
-        dc: 13,
-        onSuccess: (ch) => ({ c: setNext({ ...ch, xp: ch.xp + 2 }, 'street.recruit'), text: 'He joins, still pitching mid-heist. You respect the hustle. +2 XP.' }),
-        onFail: (ch) => ({ c: setNext({ ...ch, xp: ch.xp + 1 }, 'street.recruit'), text: 'He recruits you harder. You feel your resolve melting. +1 XP.' }),
-      },
-    ]
-  ),
-
-  'street.recruit': scene(
-    'street.recruit',
-    'Street',
-    'The Downline Hunger',
-    'You corner strangers with a lute and desperation. The bard watches you like a proud parent who made bad choices.',
-    [
-      {
-        id: 'charm',
-        text: 'Charm them',
-        stat: 'CHA',
-        dc: 14,
-        onSuccess: (ch) => ({ c: { ...ch, gold: ch.gold + 2, xp: ch.xp + 1 }, text: 'Someone signs up. They will regret it forever. +2 gold, +1 XP.' }),
-        onFail: (ch) => ({ c: { ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, text: 'A tomato is thrown. It is accurate. -1 HP.' }),
-      },
-      {
-        id: 'threaten',
-        text: 'Threaten them',
-        stat: 'STR',
-        dc: 13,
-        onSuccess: (ch) => ({ c: { ...ch, gold: ch.gold + 1 }, text: 'Fear works briefly. You feel terrible in a profitable way. +1 gold.' }),
-        onFail: (ch) => ({ c: { ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, text: 'They threaten you back. They’re better at it. -2 HP.' }),
-      },
-      {
-        id: 'quit',
-        text: 'Quit',
-        stat: 'WIS',
-        dc: 12,
-        onSuccess: (ch) => ({ c: { ...ch, xp: ch.xp + 1 }, text: 'You walk away. Freedom tastes like air. +1 XP.' }),
-        onFail: (ch) => ({ c: { ...ch, xp: ch.xp + 1 }, text: 'You try to quit, but the bard finds you later with more pamphlets. It’s a haunting. +1 XP.' }),
-      },
-    ]
-  ),
+  // (Bard MLM arc removed from the main pool for now; we’ll reintroduce as a dedicated arc later.)
 }
 
 function log(day: number, text: string): GameLogEntry {
