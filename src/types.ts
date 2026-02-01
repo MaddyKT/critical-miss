@@ -48,6 +48,7 @@ export type Character = {
   stats: Stats
   flags: Record<string, boolean>
   nextSceneId?: string | null
+  lastSceneId?: string | null
 
   campaign: CampaignState
 

@@ -61,6 +61,7 @@ export function makeNewCharacter(input: {
     stats,
     flags: {},
     nextSceneId: null,
+    lastSceneId: null,
 
     campaign: newCampaign(),
 
@@ -92,6 +93,7 @@ export function nextTurnScene(c: Character): Scene {
   if (c.nextSceneId) {
     const id = c.nextSceneId
     c.nextSceneId = null
+    c.lastSceneId = id
     return getSceneById(id)
   }
 
@@ -99,14 +101,26 @@ export function nextTurnScene(c: Character): Scene {
   const arc = c.campaign.arcId
   const act = c.campaign.act
 
-  const pool = ARC_SCENE_POOLS[arc][act]
-
   // Soft force a "finale" once progress is high.
   if (act === 3 && c.campaign.progress >= 85) {
-    return getSceneById(ARC_FINALES[arc])
+    const id = ARC_FINALES[arc]
+    c.lastSceneId = id
+    return getSceneById(id)
   }
 
-  return getSceneById(weightedPick(pool))
+  // Avoid immediate repeats (same scene twice in a row).
+  const pool0 = ARC_SCENE_POOLS[arc][act]
+  const pool = c.lastSceneId ? pool0.filter((x) => x.id !== c.lastSceneId) : pool0
+
+  // Arc-specific one-shot gating (e.g., mimic follow-up shouldn't reappear after it resolves).
+  const gated = pool.filter((x) => {
+    if (x.id === 'camp.mimic_followup' && (c.campaign.flags.mimic_followup_done || c.campaign.flags.mimic_sent_away)) return false
+    return true
+  })
+
+  const chosen = weightedPick(gated.length ? gated : pool0)
+  c.lastSceneId = chosen
+  return getSceneById(chosen)
 }
 
 export function chooseToRoll(scene: Scene, choiceId: string): PendingRoll {
@@ -445,24 +459,24 @@ const SCENES: Record<string, Scene> = {
         text: 'Adopt it',
         stat: 'WIS',
         dc: 13,
-        onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 3 }, 'mimic_adopted'), 14), text: 'You gain a weird companion: “Chesty.” You regret nothing. (Yet.) +3 XP.' }),
-        onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp), xp: ch.xp + 2 }, 'mimic_adopted'), 12), text: 'It adopts you. You wake up briefly inside it. -2 HP, +2 XP.' }),
+        onSuccess: (ch) => ({ c: advanceArc(setArcFlag(setArcFlag({ ...ch, xp: ch.xp + 3 }, 'mimic_adopted'), 'mimic_followup_done'), 14), text: 'You gain a weird companion: “Chesty.” You regret nothing. (Yet.) +3 XP.' }),
+        onFail: (ch) => ({ c: advanceArc(setArcFlag(setArcFlag({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp), xp: ch.xp + 2 }, 'mimic_adopted'), 'mimic_followup_done'), 12), text: 'It adopts you. You wake up briefly inside it. -2 HP, +2 XP.' }),
       },
       {
         id: 'boundaries',
         text: 'Set boundaries',
         stat: 'CHA',
         dc: 12,
-        onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 2 }, 'mimic_boundaries'), 12), text: 'It agrees to bite only enemies and people who deserve it. You feel oddly proud. +2 XP.' }),
-        onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 'mimic_boundaries'), 10), text: 'It agrees loudly, then bites your boot to test the rules. -1 HP.' }),
+        onSuccess: (ch) => ({ c: advanceArc(setArcFlag(setArcFlag({ ...ch, xp: ch.xp + 2 }, 'mimic_boundaries'), 'mimic_followup_done'), 12), text: 'It agrees to bite only enemies and people who deserve it. You feel oddly proud. +2 XP.' }),
+        onFail: (ch) => ({ c: advanceArc(setArcFlag(setArcFlag({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 'mimic_boundaries'), 'mimic_followup_done'), 10), text: 'It agrees loudly, then bites your boot to test the rules. -1 HP.' }),
       },
       {
         id: 'send',
         text: 'Send it away',
         stat: 'CHA',
         dc: 14,
-        onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, gold: ch.gold + 1 }, 'mimic_sent_away'), 12), text: 'It leaves you a single coin as closure. You feel… free? +1 gold.' }),
-        onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, gold: clamp(ch.gold - 1, 0, 999999) }, 'mimic_sent_away'), 10), text: 'It leaves anyway, but steals your socks. You are poorer in spirit. -1 gold.' }),
+        onSuccess: (ch) => ({ c: advanceArc(setArcFlag(setArcFlag({ ...ch, gold: ch.gold + 1 }, 'mimic_sent_away'), 'mimic_followup_done'), 12), text: 'It leaves you a single coin as closure. You feel… free? +1 gold.' }),
+        onFail: (ch) => ({ c: advanceArc(setArcFlag(setArcFlag({ ...ch, gold: clamp(ch.gold - 1, 0, 999999) }, 'mimic_sent_away'), 'mimic_followup_done'), 10), text: 'It leaves anyway, but steals your socks. You are poorer in spirit. -1 gold.' }),
       },
     ]
   ),
