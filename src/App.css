@@ -174,8 +174,25 @@ select {
 
 .hpFill {
   height: 100%;
-  background: linear-gradient(90deg, rgba(41, 209, 125, 0.95), rgba(255, 211, 106, 0.95));
+  /* color is set inline based on current HP */
   border-radius: 999px;
+  transition: width 160ms ease-out, background-color 160ms ease-out;
+}
+
+.xpTrack {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.xpFill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(124, 92, 255, 0.95), rgba(29, 139, 224, 0.95));
+  transition: width 160ms ease-out;
 }
 
 .barLabel {

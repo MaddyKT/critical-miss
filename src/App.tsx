@@ -217,13 +217,35 @@ export default function App() {
                 <div className="hpTrack" aria-label="HP bar">
                   <div
                     className="hpFill"
-                    style={{ width: `${Math.max(0, Math.min(100, (character.hp / Math.max(1, character.maxHp)) * 100))}%` }}
+                    style={{
+                      width: `${Math.max(0, Math.min(100, (character.hp / Math.max(1, character.maxHp)) * 100))}%`,
+                      backgroundColor: (() => {
+                        const pct = Math.max(0, Math.min(1, character.hp / Math.max(1, character.maxHp)))
+                        const hue = Math.round(pct * 120) // 120=green -> 0=red
+                        return `hsl(${hue} 85% 50%)`
+                      })(),
+                    }}
                   />
                 </div>
               </div>
-              <div className="bar">
-                <div className="barLabel">XP</div>
-                <div className="barValue">{character.xp}</div>
+              <div className="bar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="barLabel">XP</div>
+                  <div className="barValue">{character.xp}</div>
+                </div>
+                <div className="xpTrack" aria-label="XP bar">
+                  {(() => {
+                    const perLevel = 20 + (character.level - 1) * 10
+                    const into = ((character.xp % perLevel) + perLevel) % perLevel
+                    const pct = Math.max(0, Math.min(100, (into / perLevel) * 100))
+                    return <div className="xpFill" style={{ width: `${pct}%` }} />
+                  })()}
+                </div>
+                <div className="fine" style={{ opacity: 0.65 }}>Level {character.level} • Progress to next: {(() => {
+                  const perLevel = 20 + (character.level - 1) * 10
+                  const into = ((character.xp % perLevel) + perLevel) % perLevel
+                  return `${into}/${perLevel}`
+                })()}</div>
               </div>
               <div className="bar">
                 <div className="barLabel">Gold</div>
