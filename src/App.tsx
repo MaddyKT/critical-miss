@@ -31,6 +31,7 @@ export default function App() {
   const [restDiceCount, setRestDiceCount] = useState(1)
   const [restRolls, setRestRolls] = useState<number[]>([])
   const [restConsequenceRoll, setRestConsequenceRoll] = useState<number | null>(null)
+  const [restStoryRoll, setRestStoryRoll] = useState<number | null>(null)
 
   const [companionsOpen, setCompanionsOpen] = useState(false)
   const [inventoryOpen, setInventoryOpen] = useState(false)
@@ -100,6 +101,7 @@ export default function App() {
     setRestDiceCount(1)
     setRestRolls([])
     setRestConsequenceRoll(null)
+    setRestStoryRoll(null)
   }
 
   function openLongRest() {
@@ -108,6 +110,7 @@ export default function App() {
     setRestDiceCount(1)
     setRestRolls([])
     setRestConsequenceRoll(null)
+    setRestStoryRoll(null)
   }
 
   function rollRestDice() {
@@ -117,18 +120,19 @@ export default function App() {
     const rolls = Array.from({ length: count }, () => 1 + Math.floor(Math.random() * die))
     setRestRolls(rolls)
     setRestConsequenceRoll(1 + Math.floor(Math.random() * 100))
+    setRestStoryRoll(1 + Math.floor(Math.random() * 20))
   }
 
   function applyRest() {
     if (!character || !restOpen) return
-    if (!restConsequenceRoll) return
+    if (!restConsequenceRoll || !restStoryRoll) return
 
     if (restOpen.kind === 'short') {
       const used = restRolls.length ? restRolls : [1]
-      const r = shortRest(character, used, restConsequenceRoll)
+      const r = shortRest(character, used, restConsequenceRoll, restStoryRoll)
       setSave((prev) => ({ ...prev, character: r.c, log: [...prev.log, ...r.log] }))
     } else {
-      const r = longRest(character, restConsequenceRoll)
+      const r = longRest(character, restConsequenceRoll, restStoryRoll)
       setSave((prev) => ({ ...prev, character: r.c, log: [...prev.log, ...r.log] }))
     }
 
@@ -420,7 +424,7 @@ export default function App() {
 
                   <div style={{ display: 'flex', gap: 10 }}>
                     <button className="cm_button" onClick={rollRestDice}>Roll</button>
-                    <button className="cm_button" onClick={applyRest} disabled={!restConsequenceRoll}>
+                    <button className="cm_button" onClick={applyRest} disabled={!restConsequenceRoll || !restStoryRoll}>
                       Apply
                     </button>
                     <button className="cm_link" onClick={() => setRestOpen(null)}>Cancel</button>
@@ -438,7 +442,7 @@ export default function App() {
 
                   <div style={{ display: 'flex', gap: 10 }}>
                     <button className="cm_button" onClick={rollRestDice}>Roll consequence</button>
-                    <button className="cm_button" onClick={applyRest} disabled={!restConsequenceRoll}>
+                    <button className="cm_button" onClick={applyRest} disabled={!restConsequenceRoll || !restStoryRoll}>
                       Long Rest
                     </button>
                     <button className="cm_link" onClick={() => setRestOpen(null)}>Cancel</button>

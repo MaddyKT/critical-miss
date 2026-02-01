@@ -245,12 +245,10 @@ const ARC_SCENE_POOLS: Record<CampaignArcId, Record<1 | 2 | 3, Array<{ id: strin
   mimic: {
     1: [
       { id: 'dungeon.mimic_intro', weight: 5 },
-      { id: 'camp.mimic_followup', weight: 2 },
       { id: 'tavern.dripping_goblet', weight: 1 },
     ],
     2: [
-      { id: 'camp.mimic_followup', weight: 5 },
-      { id: 'dungeon.mimic_intro', weight: 1 },
+      { id: 'dungeon.mimic_intro', weight: 3 },
       { id: 'tavern.dripping_goblet', weight: 1 },
     ],
     3: [

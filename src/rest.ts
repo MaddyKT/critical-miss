@@ -20,7 +20,12 @@ function rollTotal(rolls: number[], modPerDie: number) {
   return base + rolls.length * modPerDie
 }
 
-export function shortRest(c0: Character, rolls: number[], consequenceRoll: number): RestResult {
+export function shortRest(
+  c0: Character,
+  rolls: number[],
+  consequenceRoll: number,
+  storyRoll: number
+): RestResult {
   let c = { ...c0 }
   const mod = conMod(c)
   const diceSpent = rolls.length
@@ -35,7 +40,29 @@ export function shortRest(c0: Character, rolls: number[], consequenceRoll: numbe
   const entries: GameLogEntry[] = []
   entries.push(log(c.day, `Short rest: spent ${diceSpent}d${c.hitDieSize}. Healed ${c.hp - hp0} HP.`))
 
-  // Consequences: smaller chance.
+  // Random rest story events (arc-specific), resolved by a d20 roll.
+  // Example: in Mimic arc, the "scratching at the tent" can happen during a rest.
+  if (c.campaign.arcId === 'mimic' && c.campaign.flags.mimic_met && !c.campaign.flags.mimic_followup_done) {
+    // 25% chance on short rest
+    if (consequenceRoll <= 25) {
+      const dc = 13
+      const wisMod = Math.floor((c.stats.WIS - 10) / 2)
+      const total = storyRoll + wisMod
+      const ok = storyRoll !== 1 && total >= dc
+
+      c.campaign = { ...c.campaign, flags: { ...c.campaign.flags, mimic_followup_done: true, ...(ok ? { mimic_rest_good: true } : { mimic_rest_bad: true }) } }
+      c.nextSceneId = 'camp.mimic_followup'
+
+      entries.push(log(c.day, `Rest event: scratching outside your tent… (WIS check d20 ${storyRoll} + ${wisMod} = ${total} vs DC ${dc})`))
+      entries.push(log(c.day, ok ? 'You wake in time. Whatever it is, you have the upper hand.' : 'You do NOT wake in time. Something bites.'))
+      if (!ok) {
+        c.hp = clamp(c.hp - 1, 0, c.maxHp)
+        entries.push(log(c.day, 'Rest consequence: -1 HP.'))
+      }
+    }
+  }
+
+  // Generic consequences (non-arc specific): smaller chance.
   if (consequenceRoll <= 25) {
     // Mild consequence: advance the arc and/or small gold loss.
     c.gold = clamp(c.gold - 1, 0, 999999)
@@ -48,7 +75,7 @@ export function shortRest(c0: Character, rolls: number[], consequenceRoll: numbe
   return { c, log: entries, summary: `Short rest: +${c.hp - hp0} HP` }
 }
 
-export function longRest(c0: Character, consequenceRoll: number): RestResult {
+export function longRest(c0: Character, consequenceRoll: number, storyRoll: number): RestResult {
   let c = { ...c0 }
 
   c.day += 2
@@ -64,6 +91,28 @@ export function longRest(c0: Character, consequenceRoll: number): RestResult {
 
   const entries: GameLogEntry[] = []
   entries.push(log(c.day, 'Long rest: fully healed. Spell slots refreshed. Hit dice restored.'))
+
+  // Random rest story events (arc-specific), resolved by a d20 roll.
+  if (c.campaign.arcId === 'mimic' && c.campaign.flags.mimic_met && !c.campaign.flags.mimic_followup_done) {
+    // 40% chance on long rest (riskier)
+    if (consequenceRoll <= 40) {
+      const dc = 13
+      const wisMod = Math.floor((c.stats.WIS - 10) / 2)
+      const total = storyRoll + wisMod
+      const ok = storyRoll !== 1 && total >= dc
+
+      c.campaign = { ...c.campaign, flags: { ...c.campaign.flags, mimic_followup_done: true, ...(ok ? { mimic_rest_good: true } : { mimic_rest_bad: true }) } }
+      c.nextSceneId = 'camp.mimic_followup'
+
+      entries.push(log(c.day, `Rest event: scratching outside your tent… (WIS check d20 ${storyRoll} + ${wisMod} = ${total} vs DC ${dc})`))
+      entries.push(log(c.day, ok ? 'You wake in time. Whatever it is, you have the upper hand.' : 'You do NOT wake in time. Something bites.'))
+      if (!ok) {
+        // Long rest is riskier: bigger bite.
+        c.hp = clamp(c.hp - 2, 0, c.maxHp)
+        entries.push(log(c.day, 'Rest consequence: -2 HP.'))
+      }
+    }
+  }
 
   // Consequences: higher chance.
   if (consequenceRoll <= 55) {
