@@ -4,6 +4,7 @@ import { Dice2D } from './Dice2D'
 export function DiceModal(props: {
   stat: string
   dc: number
+  bonus: number
   onRoll: (roll: number) => void
 }) {
   const [phase, setPhase] = useState<'ready' | 'rolling' | 'done'>('ready')
@@ -32,6 +33,8 @@ export function DiceModal(props: {
     props.onRoll(roll)
   }
 
+  const total = roll == null ? null : roll + props.bonus
+
   return (
     <div style={{ display: 'grid', gap: 10 }}>
       <div style={{ display: 'grid', placeItems: 'center' }}>
@@ -52,7 +55,17 @@ export function DiceModal(props: {
         <div style={{ marginTop: 8, fontWeight: 900, fontSize: 32 }}>{phase === 'done' && roll != null ? roll : ''}</div>
       </div>
 
-      <div className="fine">Check: {props.stat} vs DC {props.dc}</div>
+      <div className="fine">
+        Check: <b>{props.stat}</b> vs DC <b>{props.dc}</b>
+      </div>
+      <div className="fine" style={{ opacity: 0.85 }}>
+        Bonus: {props.bonus >= 0 ? `+${props.bonus}` : props.bonus}
+        {total != null ? (
+          <>
+            {' '}• Total: <b>{total}</b> {total >= props.dc && roll !== 1 ? '(success)' : '(fail)'}
+          </>
+        ) : null}
+      </div>
 
       {phase === 'ready' ? (
         <button className="cm_button" onClick={doRoll}>

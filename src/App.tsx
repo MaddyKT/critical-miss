@@ -3,7 +3,7 @@ import './App.css'
 import type { ClassName, SaveFile, Sex } from './types'
 import { SCENARIO_PACKS, type ScenarioPack } from './scenarioPacks'
 import { clearSave, loadSave, saveGame } from './storage'
-import { pick } from './utils'
+import { modFromStat, pick } from './utils'
 import { ModalCard } from './components/ModalCard'
 import { generateBackground, makeNewCharacter, nextTurnScene, resolveRoll, chooseToRoll, randomName } from './game2'
 import { enemyTurn, playerAttack, playerGuard, playerRun, cantripForClass, spellForClass, weaponForClass } from './combat'
@@ -387,9 +387,14 @@ export default function App() {
 
           {save.stage.kind === 'roll' ? (
             <ModalCard category={save.stage.scene.category} title={'Roll'}>
-              <DiceModal stat={save.stage.pending.stat} dc={save.stage.pending.dc} onRoll={applyRoll} />
+              <DiceModal
+                stat={save.stage.pending.stat}
+                dc={save.stage.pending.dc}
+                bonus={modFromStat(character.stats[save.stage.pending.stat])}
+                onRoll={applyRoll}
+              />
               <div className="fine" style={{ marginTop: 8 }}>
-                (3D model is a real d20; number overlay is the official result.)
+                (d20 + your stat modifier. Natural 1 always fails.)
               </div>
             </ModalCard>
           ) : null}
