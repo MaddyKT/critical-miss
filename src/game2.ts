@@ -51,6 +51,9 @@ export function makeNewCharacter(input: {
     maxHp,
     gold: 12,
 
+    inventory: [],
+    companions: [],
+
     hitDieSize,
     hitDiceMax: 6,
     hitDiceRemaining: 6,
@@ -157,11 +160,13 @@ export function resolveRoll(
     const r = choice.onSuccess(c)
     c = r.c
     entries.push(log(c.day, r.text))
+    for (const extra of r.logs ?? []) entries.push(log(c.day, extra))
     return { c, log: entries, outcomeText: r.text, breakdown, roll, success }
   } else {
     const r = choice.onFail(c)
     c = r.c
     entries.push(log(c.day, r.text))
+    for (const extra of r.logs ?? []) entries.push(log(c.day, extra))
     return { c, log: entries, outcomeText: r.text, breakdown, roll, success }
   }
 }

@@ -207,10 +207,18 @@ export default function App() {
               </div>
             </div>
             <div className="bars">
-              <div className="bar">
-                <div className="barLabel">HP</div>
-                <div className="barValue">
-                  {character.hp}/{character.maxHp}
+              <div className="bar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="barLabel">HP</div>
+                  <div className="barValue">
+                    {character.hp}/{character.maxHp}
+                  </div>
+                </div>
+                <div className="hpTrack" aria-label="HP bar">
+                  <div
+                    className="hpFill"
+                    style={{ width: `${Math.max(0, Math.min(100, (character.hp / Math.max(1, character.maxHp)) * 100))}%` }}
+                  />
                 </div>
               </div>
               <div className="bar">
@@ -226,6 +234,27 @@ export default function App() {
                 <div className="barValue">{character.day}</div>
               </div>
             </div>
+          </section>
+
+          <section className="party">
+            <div className="partyTitle">Companions</div>
+            {character.companions.length === 0 ? (
+              <div className="muted">None yet.</div>
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {character.companions.map((c) => (
+                  <div key={c.id} className="bar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontWeight: 800 }}>{c.name}</div>
+                      <div className="fine">{c.relationship}/100</div>
+                    </div>
+                    <div className="hpTrack" aria-label="Relationship bar">
+                      <div className="hpFill" style={{ width: `${Math.max(0, Math.min(100, c.relationship))}%`, background: 'linear-gradient(90deg, rgba(124,92,255,0.95), rgba(41,209,125,0.95))' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="log">

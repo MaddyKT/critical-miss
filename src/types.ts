@@ -23,6 +23,13 @@ export type CampaignState = {
   flags: Record<string, boolean>
 }
 
+export type Companion = {
+  id: string
+  name: string
+  /** 0..100 */
+  relationship: number
+}
+
 export type Character = {
   name: string
   sex: Sex
@@ -35,6 +42,9 @@ export type Character = {
   hp: number
   maxHp: number
   gold: number
+
+  inventory: string[]
+  companions: Companion[]
 
   // Resource systems
   hitDieSize: 6 | 8 | 10 | 12
@@ -66,14 +76,21 @@ export type GameLogEntry = {
 
 export type StatKey = keyof Stats
 
+export type SceneOutcome = {
+  c: Character
+  text: string
+  /** additional log lines to append (e.g., items, companions) */
+  logs?: string[]
+}
+
 export type SceneChoice = {
   id: string
   text: string
   stat: StatKey
   dc: number
   // for later: adv/disadv, multi-stat, etc.
-  onSuccess: (c: Character) => { c: Character; text: string }
-  onFail: (c: Character) => { c: Character; text: string }
+  onSuccess: (c: Character) => SceneOutcome
+  onFail: (c: Character) => SceneOutcome
 }
 
 export type Scene = {
