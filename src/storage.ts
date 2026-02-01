@@ -42,6 +42,12 @@ function normalizeV3(save: SaveFile): SaveFile {
   if (typeof c.spellSlotsMax !== 'number') c.spellSlotsMax = 0
   if (typeof c.spellSlotsRemaining !== 'number') c.spellSlotsRemaining = c.spellSlotsMax
 
+  // campaign defaults
+  if (!c.campaign || typeof c.campaign !== 'object') {
+    c.campaign = { arcId: 'taxman', act: 1, progress: 0, flags: {}, seenSceneIds: [] }
+  }
+  if (!Array.isArray(c.campaign.seenSceneIds)) c.campaign.seenSceneIds = []
+
   save.character = c
   return save
 }

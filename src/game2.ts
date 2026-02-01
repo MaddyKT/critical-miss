@@ -171,18 +171,26 @@ export function nextTurnScene(c: Character): Scene {
 
   const pool0 = ARC_SCENE_POOLS[arc][act]
 
-  // Avoid repeats across the last N scenes to prevent "same act" spam.
-  const recent = new Set((c.recentSceneIds ?? []).slice(-3))
+  // Hard rule: do not repeat scenes within an arc.
+  const seen = new Set(c.campaign.seenSceneIds ?? [])
 
-  // Arc-specific one-shot gating (e.g., mimic follow-up shouldn't reappear after it resolves).
+  // Arc-specific one-shot gating.
   const gated0 = pool0.filter((x) => {
     if (x.id === 'camp.mimic_followup' && (c.campaign.flags.mimic_followup_done || c.campaign.flags.mimic_sent_away)) return false
     return true
   })
 
-  const filtered = gated0.filter((x) => !recent.has(x.id))
-  const chosen = weightedPick((filtered.length ? filtered : gated0).length ? (filtered.length ? filtered : gated0) : pool0)
+  const unseen = gated0.filter((x) => !seen.has(x.id))
 
+  // If we run out of authored scenes for this act, generate a unique "travel" scene
+  // so the arc can continue without repeats.
+  if (unseen.length === 0) {
+    const s = makeFillerScene(c)
+    markSeen(c, s.id)
+    return s
+  }
+
+  const chosen = weightedPick(unseen)
   markSeen(c, chosen)
   return getSceneById(chosen)
 }
@@ -248,7 +256,7 @@ function advanceArc(c: Character, delta: number): Character {
 
 function newCampaign(): CampaignState {
   const arcId = pick(Object.keys(ARC_META) as CampaignArcId[])
-  return { arcId, act: 1, progress: 0, flags: {} }
+  return { arcId, act: 1, progress: 0, flags: {}, seenSceneIds: [] }
 }
 
 const ARC_META: Record<CampaignArcId, { title: string; blurb: string }> = {
@@ -333,10 +341,14 @@ function getSceneById(id: string): Scene {
 
 function markSeen(c: Character, id: string) {
   c.lastSceneId = id
+
   const prev = Array.isArray(c.recentSceneIds) ? c.recentSceneIds : []
-  const next = [...prev, id]
-  // keep a small rolling window
-  c.recentSceneIds = next.slice(-6)
+  c.recentSceneIds = [...prev, id].slice(-6)
+
+  const seen = Array.isArray(c.campaign.seenSceneIds) ? c.campaign.seenSceneIds : []
+  if (!seen.includes(id)) {
+    c.campaign = { ...c.campaign, seenSceneIds: [...seen, id] }
+  }
 }
 
 function weightedPick(items: Array<{ id: string; weight: number }>) {
@@ -347,6 +359,49 @@ function weightedPick(items: Array<{ id: string; weight: number }>) {
     if (r <= 0) return it.id
   }
   return items[items.length - 1].id
+}
+
+function randomStatKey(): keyof Stats {
+  return pick(['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'] as const)
+}
+
+function makeFillerScene(c: Character): Scene {
+  const arc = ARC_META[c.campaign.arcId]
+  const mood = pick([
+    'A long road and longer thoughts.',
+    'You make camp and listen to the world breathing.',
+    'A small detour becomes a lesson in humility.',
+    'You follow a rumor that turns into… mostly walking.',
+    'The day is quiet. That makes you nervous.',
+  ])
+
+  const statA = randomStatKey()
+  const statB = randomStatKey()
+  const dcA = 10 + Math.floor(Math.random() * 6)
+  const dcB = 10 + Math.floor(Math.random() * 6)
+
+  const id = `filler.${c.campaign.arcId}.day${c.day}.act${c.campaign.act}`
+
+  const choices: SceneChoice[] = [
+    {
+      id: 'push_on',
+      text: 'Push onward',
+      stat: statA,
+      dc: dcA,
+      onSuccess: (ch) => ({ c: { ...ch, xp: ch.xp + 2 }, text: 'You make good time. Your confidence grows legs. +2 XP.' }),
+      onFail: (ch) => ({ c: { ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, text: 'You trip over a root that was clearly placed by fate. -1 HP.' }),
+    },
+    {
+      id: 'scavenge',
+      text: 'Scavenge for supplies',
+      stat: statB,
+      dc: dcB,
+      onSuccess: (ch) => ({ c: { ...ch, gold: ch.gold + 2 }, text: 'You find something valuable and mostly legal. +2 gold.' }),
+      onFail: (ch) => ({ c: { ...ch, xp: ch.xp + 1 }, text: 'You find nothing, but you do gain character. +1 XP.' }),
+    },
+  ]
+
+  return scene(id, 'Travel', arc.title, `${mood}\n\n(You feel the campaign tightening around you.)`, choices)
 }
 
 const SCENES: Record<string, Scene> = {

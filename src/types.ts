@@ -21,6 +21,8 @@ export type CampaignState = {
   progress: number
   /** lightweight continuity flags scoped to the arc */
   flags: Record<string, boolean>
+  /** scene ids already used in this arc; used to prevent repeats */
+  seenSceneIds: string[]
 }
 
 export type Companion = {
