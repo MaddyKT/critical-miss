@@ -5,7 +5,7 @@ import { SCENARIO_PACKS, type ScenarioPack } from './scenarioPacks'
 import { clearSave, loadSave, saveGame } from './storage'
 import { pick } from './utils'
 import { ModalCard } from './components/ModalCard'
-import { generateBackground, makeNewCharacter, nextTurnScene, resolveRoll, chooseToRoll } from './game2'
+import { generateBackground, makeNewCharacter, nextTurnScene, resolveRoll, chooseToRoll, randomName } from './game2'
 import { longRest, shortRest } from './rest'
 import { DiceModal } from './dice/DiceModal'
 
@@ -22,6 +22,7 @@ export default function App() {
   const [sex, setSex] = useState<Sex>('Female')
   const [className, setClassName] = useState<ClassName>('Rogue')
   const [alignment, setAlignment] = useState<'Good' | 'Neutral' | 'Evil'>('Neutral')
+  const [charName, setCharName] = useState('')
 
   const [packsOpen, setPacksOpen] = useState(false)
   const [activePack, setActivePack] = useState<ScenarioPack>(() => SCENARIO_PACKS[0])
@@ -43,13 +44,19 @@ export default function App() {
   const canStart = useMemo(() => !!className && !!alignment && !!sex, [className, alignment, sex])
 
   function randomize() {
-    setSex(pick(['Male', 'Female'] as const))
+    const s = pick(['Male', 'Female'] as const)
+    setSex(s)
     setClassName(pick(CLASSES))
     setAlignment(pick(ALIGNMENTS))
+    setCharName(randomName(s))
+  }
+
+  function randomizeName() {
+    setCharName(randomName(sex))
   }
 
   function newGame() {
-    const c = makeNewCharacter({ sex, className, alignment })
+    const c = makeNewCharacter({ name: charName.trim() || undefined, sex, className, alignment })
     const bg = generateBackground(c)
     setSave({ version: 3, character: c, log: [{ id: `log_${Date.now()}`, day: 0, text: bg }], stage: { kind: 'idle' } })
   }
@@ -158,12 +165,43 @@ export default function App() {
           <h2>New campaign</h2>
 
           <div className="row">
+            <label>Name</label>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <input
+                value={charName}
+                onChange={(e) => setCharName(e.target.value)}
+                placeholder="e.g., Nyx Underfoot"
+                style={{ flex: 1 }}
+              />
+              <button className="ghost" type="button" onClick={randomizeName}>
+                Random
+              </button>
+            </div>
+          </div>
+
+          <div className="row">
             <label>Sex</label>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button className={sex === 'Female' ? 'primary' : 'ghost'} type="button" onClick={() => setSex('Female')} style={{ flex: 1 }}>
+              <button
+                className={sex === 'Female' ? 'primary' : 'ghost'}
+                type="button"
+                onClick={() => {
+                  setSex('Female')
+                  if (!charName.trim()) setCharName(randomName('Female'))
+                }}
+                style={{ flex: 1 }}
+              >
                 Female
               </button>
-              <button className={sex === 'Male' ? 'primary' : 'ghost'} type="button" onClick={() => setSex('Male')} style={{ flex: 1 }}>
+              <button
+                className={sex === 'Male' ? 'primary' : 'ghost'}
+                type="button"
+                onClick={() => {
+                  setSex('Male')
+                  if (!charName.trim()) setCharName(randomName('Male'))
+                }}
+                style={{ flex: 1 }}
+              >
                 Male
               </button>
             </div>
