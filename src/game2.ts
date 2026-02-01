@@ -65,6 +65,7 @@ export function makeNewCharacter(input: {
     flags: {},
     nextSceneId: null,
     lastSceneId: null,
+    recentSceneIds: [],
 
     campaign: newCampaign(),
 
@@ -96,7 +97,7 @@ export function nextTurnScene(c: Character): Scene {
   if (c.nextSceneId) {
     const id = c.nextSceneId
     c.nextSceneId = null
-    c.lastSceneId = id
+    markSeen(c, id)
     return getSceneById(id)
   }
 
@@ -107,22 +108,25 @@ export function nextTurnScene(c: Character): Scene {
   // Soft force a "finale" once progress is high.
   if (act === 3 && c.campaign.progress >= 85) {
     const id = ARC_FINALES[arc]
-    c.lastSceneId = id
+    markSeen(c, id)
     return getSceneById(id)
   }
 
-  // Avoid immediate repeats (same scene twice in a row).
   const pool0 = ARC_SCENE_POOLS[arc][act]
-  const pool = c.lastSceneId ? pool0.filter((x) => x.id !== c.lastSceneId) : pool0
+
+  // Avoid repeats across the last N scenes to prevent "same act" spam.
+  const recent = new Set((c.recentSceneIds ?? []).slice(-3))
 
   // Arc-specific one-shot gating (e.g., mimic follow-up shouldn't reappear after it resolves).
-  const gated = pool.filter((x) => {
+  const gated0 = pool0.filter((x) => {
     if (x.id === 'camp.mimic_followup' && (c.campaign.flags.mimic_followup_done || c.campaign.flags.mimic_sent_away)) return false
     return true
   })
 
-  const chosen = weightedPick(gated.length ? gated : pool0)
-  c.lastSceneId = chosen
+  const filtered = gated0.filter((x) => !recent.has(x.id))
+  const chosen = weightedPick((filtered.length ? filtered : gated0).length ? (filtered.length ? filtered : gated0) : pool0)
+
+  markSeen(c, chosen)
   return getSceneById(chosen)
 }
 
@@ -270,6 +274,14 @@ function getSceneById(id: string): Scene {
   const s = SCENES[id]
   if (!s) return SCENES['tavern.dripping_goblet']
   return s
+}
+
+function markSeen(c: Character, id: string) {
+  c.lastSceneId = id
+  const prev = Array.isArray(c.recentSceneIds) ? c.recentSceneIds : []
+  const next = [...prev, id]
+  // keep a small rolling window
+  c.recentSceneIds = next.slice(-6)
 }
 
 function weightedPick(items: Array<{ id: string; weight: number }>) {

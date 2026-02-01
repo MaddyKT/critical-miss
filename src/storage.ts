@@ -31,6 +31,7 @@ function normalizeV3(save: SaveFile): SaveFile {
   if (!Array.isArray(c.inventory)) c.inventory = []
   if (!Array.isArray(c.companions)) c.companions = []
   if (typeof c.lastSceneId !== 'string') c.lastSceneId = null
+  if (!Array.isArray(c.recentSceneIds)) c.recentSceneIds = []
 
   // hit dice
   if (![6, 8, 10, 12].includes(c.hitDieSize)) c.hitDieSize = 8
