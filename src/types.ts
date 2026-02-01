@@ -111,11 +111,38 @@ export type PendingRoll = {
   dc: number
 }
 
+export type EnemyIntent =
+  | { kind: 'attack'; label: string; toHit: number; dmg: { dice: number; sides: 4 | 6 | 8 | 10 | 12 }; stat: StatKey }
+  | { kind: 'heavy'; label: string; toHit: number; dmg: { dice: number; sides: 4 | 6 | 8 | 10 | 12 }; stat: StatKey }
+  | { kind: 'defend'; label: string; acBonus: number }
+
+export type CombatEnemy = {
+  id: string
+  name: string
+  maxHp: number
+  hp: number
+  ac: number
+  intent: EnemyIntent
+}
+
+export type CombatState = {
+  enemy: CombatEnemy
+  round: number
+  /** 0..100 */
+  fleeProgress: number
+  guard: boolean
+  /** link back to narrative */
+  onWin: { text: string; nextSceneId?: string | null; logs?: string[] }
+  onLose: { text: string; nextSceneId?: string | null; logs?: string[] }
+  onFlee: { text: string; nextSceneId?: string | null; logs?: string[] }
+}
+
 export type UIStage =
   | { kind: 'idle' } // waiting for +Turn
   | { kind: 'scene'; scene: Scene }
   | { kind: 'roll'; scene: Scene; pending: PendingRoll }
   | { kind: 'outcome'; scene: Scene; outcomeText: string }
+  | { kind: 'combat'; combat: CombatState }
 
 export type SaveFile = {
   version: 3

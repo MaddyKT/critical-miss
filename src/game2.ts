@@ -1,6 +1,7 @@
 import type { CampaignArcId, CampaignState, Character, GameLogEntry, Scene, SceneChoice, PendingRoll, Stats } from './types'
 import { clamp, d20, modFromStat, pick, uid } from './utils'
 import { mimicFinaleScene } from './game2.mimicFinale'
+import { startCombat } from './combat'
 
 const NAME_FIRST_F: string[] = ['Astra', 'Lilith', 'Morgana', 'Nyx', 'Seraphine', 'Vera', 'Tess', 'Rowan']
 const NAME_FIRST_M: string[] = ['Bromley', 'Thorn', 'Garrick', 'Roland', 'Osric', 'Dorian', 'Milo', 'Cedric']
@@ -482,7 +483,24 @@ const SCENES: Record<string, Scene> = {
         stat: 'WIS',
         dc: 13,
         onSuccess: (ch) => ({ c: { ...ch, xp: ch.xp + 5 }, text: 'You defuse the tension with alarming competence. The stranger offers a lead. +5 XP.' }),
-        onFail: (ch) => ({ c: { ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, text: 'You say the wrong thing. There is a chair. The chair is now part of your face. -3 HP.' }),
+        onFail: (ch) => ({
+          c: {
+            ...ch,
+            // start a combat via a hidden flag read by the UI
+            flags: {
+              ...ch.flags,
+              __startCombat: startCombat({
+                c: ch,
+                enemyKind: 'thug',
+                onWin: { text: 'The thug collapses and the tavern pretends it didn’t see. You keep your pride.', logs: ['Combat won: Tavern brawl'] },
+                onLose: { text: 'You go down hard. Someone steps on your hand “by accident.”', logs: ['Combat lost: Tavern brawl'] },
+                onFlee: { text: 'You slip out into the night with your dignity mostly intact.', logs: ['Fled: Tavern brawl'] },
+              }) as any,
+            },
+          },
+          text: 'You say the wrong thing. The stranger stands. Chairs scrape. Someone reaches for a bottle.',
+          logs: ['Combat triggered: Tavern brawl'],
+        }),
       },
       {
         id: 'flirt',

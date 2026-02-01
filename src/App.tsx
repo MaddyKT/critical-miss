@@ -6,6 +6,7 @@ import { clearSave, loadSave, saveGame } from './storage'
 import { pick } from './utils'
 import { ModalCard } from './components/ModalCard'
 import { generateBackground, makeNewCharacter, nextTurnScene, resolveRoll, chooseToRoll, randomName } from './game2'
+import { enemyTurn, playerAttack, playerGuard, playerRun, cantripForClass, spellForClass, weaponForClass } from './combat'
 import { longRest, shortRest } from './rest'
 import { DiceModal } from './dice/DiceModal'
 
@@ -88,6 +89,17 @@ export default function App() {
     const scene = save.stage.scene
     const pending = save.stage.pending
     const { c, log, outcomeText } = resolveRoll(character, scene, pending, roll)
+
+    // Some outcomes will trigger combat instead of direct HP loss.
+    const combatToStart = (c.flags as any)?.__startCombat
+    if (combatToStart && typeof combatToStart === 'object') {
+      // clear flag
+      const cc = { ...c, flags: { ...c.flags } }
+      delete (cc.flags as any).__startCombat
+      setSave((prev) => ({ ...prev, character: cc, log: [...prev.log, ...log], stage: { kind: 'combat', combat: combatToStart } }))
+      return
+    }
+
     setSave((prev) => ({ ...prev, character: c, log: [...prev.log, ...log], stage: { kind: 'outcome', scene, outcomeText } }))
   }
 
@@ -378,6 +390,210 @@ export default function App() {
               <DiceModal stat={save.stage.pending.stat} dc={save.stage.pending.dc} onRoll={applyRoll} />
               <div className="fine" style={{ marginTop: 8 }}>
                 (3D model is a real d20; number overlay is the official result.)
+              </div>
+            </ModalCard>
+          ) : null}
+
+          {save.stage.kind === 'combat' ? (
+            <ModalCard category={'Combat'} title={`${save.stage.combat.enemy.name} • Round ${save.stage.combat.round}`}>
+              <div style={{ display: 'grid', gap: 10 }}>
+                <div className="bar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontWeight: 900 }}>Enemy HP</div>
+                    <div className="fine">{save.stage.combat.enemy.hp}/{save.stage.combat.enemy.maxHp} • AC {save.stage.combat.enemy.ac}</div>
+                  </div>
+                  <div className="hpTrack">
+                    <div
+                      className="hpFill"
+                      style={{
+                        width: `${Math.max(0, Math.min(100, (save.stage.combat.enemy.hp / Math.max(1, save.stage.combat.enemy.maxHp)) * 100))}%`,
+                        backgroundColor: (() => {
+                          const pct = Math.max(0, Math.min(1, save.stage.combat.enemy.hp / Math.max(1, save.stage.combat.enemy.maxHp)))
+                          const hue = Math.round(pct * 120)
+                          return `hsl(${hue} 85% 45%)`
+                        })(),
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="bar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontWeight: 900 }}>Enemy intent</div>
+                    <div className="fine">{save.stage.combat.enemy.intent.label}</div>
+                  </div>
+                  <div className="fine" style={{ opacity: 0.85 }}>
+                    (They are about to: {save.stage.combat.enemy.intent.kind})
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gap: 8 }}>
+                  <button
+                    className="cm_button"
+                    onClick={() => {
+                      if (!character) return
+                      if (save.stage.kind !== 'combat') return
+                      const r = playerAttack(character, save.stage.combat, 'weapon')
+                      // win?
+                      if (r.combat.enemy.hp <= 0) {
+                        const out = r.combat.onWin
+                        const c2 = r.c
+                        setSave((prev) => ({
+                          ...prev,
+                          character: c2,
+                          log: [...prev.log, { id: `log_${Date.now()}`, day: c2.day, text: r.text }, ...(out.logs ?? []).map((t) => ({ id: `log_${Date.now()}_${Math.random()}`, day: c2.day, text: t }))],
+                          stage: { kind: 'outcome', scene: { id: 'combat', category: 'Combat', title: 'Victory', body: '', choices: [] } as any, outcomeText: out.text },
+                        }))
+                        return
+                      }
+                      // enemy turn
+                      const e = enemyTurn(r.c, { ...r.combat, enemy: { ...r.combat.enemy } })
+                      // lose?
+                      if (e.c.hp <= 0) {
+                        const out = e.combat.onLose
+                        const c2 = e.c
+                        setSave((prev) => ({
+                          ...prev,
+                          character: c2,
+                          log: [...prev.log, { id: `log_${Date.now()}`, day: c2.day, text: r.text }, { id: `log_${Date.now()}_e`, day: c2.day, text: e.text }, ...(out.logs ?? []).map((t) => ({ id: `log_${Date.now()}_${Math.random()}`, day: c2.day, text: t }))],
+                          stage: { kind: 'outcome', scene: { id: 'combat', category: 'Combat', title: 'Defeat', body: '', choices: [] } as any, outcomeText: out.text },
+                        }))
+                        return
+                      }
+                      setSave((prev) => ({
+                        ...prev,
+                        character: e.c,
+                        log: [...prev.log, { id: `log_${Date.now()}`, day: e.c.day, text: r.text }, { id: `log_${Date.now()}_e`, day: e.c.day, text: e.text }],
+                        stage: { kind: 'combat', combat: e.combat },
+                      }))
+                    }}
+                  >
+                    Attack ({weaponForClass(character.className).name})
+                  </button>
+
+                  {cantripForClass(character.className) ? (
+                    <button
+                      className="cm_button"
+                      onClick={() => {
+                        if (!character) return
+                        if (save.stage.kind !== 'combat') return
+                        const r = playerAttack(character, save.stage.combat, 'cantrip')
+                        if (r.combat.enemy.hp <= 0) {
+                          const out = r.combat.onWin
+                          const c2 = r.c
+                          setSave((prev) => ({
+                            ...prev,
+                            character: c2,
+                            log: [...prev.log, { id: `log_${Date.now()}`, day: c2.day, text: r.text }, ...(out.logs ?? []).map((t) => ({ id: `log_${Date.now()}_${Math.random()}`, day: c2.day, text: t }))],
+                            stage: { kind: 'outcome', scene: { id: 'combat', category: 'Combat', title: 'Victory', body: '', choices: [] } as any, outcomeText: out.text },
+                          }))
+                          return
+                        }
+                        const e = enemyTurn(r.c, { ...r.combat, enemy: { ...r.combat.enemy } })
+                        setSave((prev) => ({
+                          ...prev,
+                          character: e.c,
+                          log: [...prev.log, { id: `log_${Date.now()}`, day: e.c.day, text: r.text }, { id: `log_${Date.now()}_e`, day: e.c.day, text: e.text }],
+                          stage: { kind: 'combat', combat: e.combat },
+                        }))
+                      }}
+                    >
+                      Cantrip ({cantripForClass(character.className)!.name})
+                    </button>
+                  ) : null}
+
+                  {spellForClass(character.className) ? (
+                    <button
+                      className="cm_button"
+                      onClick={() => {
+                        if (!character) return
+                        if (save.stage.kind !== 'combat') return
+                        const r = playerAttack(character, save.stage.combat, 'spell')
+                        if (r.text === 'No spell slots left.') {
+                          setSave((prev) => ({ ...prev, log: [...prev.log, { id: `log_${Date.now()}`, day: character.day, text: r.text }] }))
+                          return
+                        }
+                        if (r.combat.enemy.hp <= 0) {
+                          const out = r.combat.onWin
+                          const c2 = r.c
+                          setSave((prev) => ({
+                            ...prev,
+                            character: c2,
+                            log: [...prev.log, { id: `log_${Date.now()}`, day: c2.day, text: r.text }, ...(out.logs ?? []).map((t) => ({ id: `log_${Date.now()}_${Math.random()}`, day: c2.day, text: t }))],
+                            stage: { kind: 'outcome', scene: { id: 'combat', category: 'Combat', title: 'Victory', body: '', choices: [] } as any, outcomeText: out.text },
+                          }))
+                          return
+                        }
+                        const e = enemyTurn(r.c, { ...r.combat, enemy: { ...r.combat.enemy } })
+                        setSave((prev) => ({
+                          ...prev,
+                          character: e.c,
+                          log: [...prev.log, { id: `log_${Date.now()}`, day: e.c.day, text: r.text }, { id: `log_${Date.now()}_e`, day: e.c.day, text: e.text }],
+                          stage: { kind: 'combat', combat: e.combat },
+                        }))
+                      }}
+                    >
+                      Spell ({spellForClass(character.className)!.name}) • Slots {character.spellSlotsRemaining}
+                    </button>
+                  ) : null}
+
+                  <button
+                    className="cm_button"
+                    onClick={() => {
+                      if (!character) return
+                      if (save.stage.kind !== 'combat') return
+                      const g = playerGuard(save.stage.combat)
+                      const e = enemyTurn(character, g.combat)
+                      if (e.c.hp <= 0) {
+                        const out = e.combat.onLose
+                        const c2 = e.c
+                        setSave((prev) => ({
+                          ...prev,
+                          character: c2,
+                          log: [...prev.log, { id: `log_${Date.now()}`, day: c2.day, text: g.text }, { id: `log_${Date.now()}_e`, day: c2.day, text: e.text }, ...(out.logs ?? []).map((t) => ({ id: `log_${Date.now()}_${Math.random()}`, day: c2.day, text: t }))],
+                          stage: { kind: 'outcome', scene: { id: 'combat', category: 'Combat', title: 'Defeat', body: '', choices: [] } as any, outcomeText: out.text },
+                        }))
+                        return
+                      }
+                      setSave((prev) => ({
+                        ...prev,
+                        character: e.c,
+                        log: [...prev.log, { id: `log_${Date.now()}`, day: e.c.day, text: g.text }, { id: `log_${Date.now()}_e`, day: e.c.day, text: e.text }],
+                        stage: { kind: 'combat', combat: e.combat },
+                      }))
+                    }}
+                  >
+                    Guard
+                  </button>
+
+                  <button
+                    className="cm_button"
+                    onClick={() => {
+                      if (!character) return
+                      if (save.stage.kind !== 'combat') return
+                      const r = playerRun(character, save.stage.combat)
+                      if (r.combat.fleeProgress >= 100) {
+                        const out = r.combat.onFlee
+                        const c2 = character
+                        setSave((prev) => ({
+                          ...prev,
+                          log: [...prev.log, { id: `log_${Date.now()}`, day: c2.day, text: r.text }, ...(out.logs ?? []).map((t) => ({ id: `log_${Date.now()}_${Math.random()}`, day: c2.day, text: t }))],
+                          stage: { kind: 'outcome', scene: { id: 'combat', category: 'Combat', title: 'Escaped', body: '', choices: [] } as any, outcomeText: out.text },
+                        }))
+                        return
+                      }
+                      const e = enemyTurn(character, r.combat)
+                      setSave((prev) => ({
+                        ...prev,
+                        character: e.c,
+                        log: [...prev.log, { id: `log_${Date.now()}`, day: e.c.day, text: r.text }, { id: `log_${Date.now()}_e`, day: e.c.day, text: e.text }],
+                        stage: { kind: 'combat', combat: e.combat },
+                      }))
+                    }}
+                  >
+                    Run (progress {save.stage.combat.fleeProgress}%)
+                  </button>
+                </div>
               </div>
             </ModalCard>
           ) : null}
