@@ -31,6 +31,9 @@ export default function App() {
   const [restRolls, setRestRolls] = useState<number[]>([])
   const [restConsequenceRoll, setRestConsequenceRoll] = useState<number | null>(null)
 
+  const [companionsOpen, setCompanionsOpen] = useState(false)
+  const [inventoryOpen, setInventoryOpen] = useState(false)
+
   useEffect(() => {
     saveGame(save)
   }, [save])
@@ -288,16 +291,27 @@ export default function App() {
                 </div>
               ))}
             </div>
-            <div className="choices" style={{ display: 'flex', gap: 10 }}>
-              <button className="choice" onClick={nextTurn}>
-                + Turn
-              </button>
-              <button className="choice" onClick={openShortRest} disabled={save.stage.kind !== 'idle' || character.hitDiceRemaining <= 0}>
-                Short Rest ({character.hitDiceRemaining} HD)
-              </button>
-              <button className="choice" onClick={openLongRest} disabled={save.stage.kind !== 'idle'}>
-                Long Rest
-              </button>
+            <div className="choices" style={{ display: 'grid', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button className="choice" onClick={nextTurn}>
+                  + Turn
+                </button>
+                <button className="choice" onClick={openShortRest} disabled={save.stage.kind !== 'idle' || character.hitDiceRemaining <= 0}>
+                  Short Rest ({character.hitDiceRemaining} HD)
+                </button>
+                <button className="choice" onClick={openLongRest} disabled={save.stage.kind !== 'idle'}>
+                  Long Rest
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button className="choice" type="button" onClick={() => setCompanionsOpen(true)}>
+                  Companions
+                </button>
+                <button className="choice" type="button" onClick={() => setInventoryOpen(true)}>
+                  Inventory
+                </button>
+              </div>
             </div>
           </section>
 
@@ -397,6 +411,56 @@ export default function App() {
                   </div>
                 </>
               )}
+            </ModalCard>
+          ) : null}
+
+          {companionsOpen ? (
+            <ModalCard category={'Companions'} title={'Companions'}>
+              {character.companions.length === 0 ? (
+                <div className="fine">No companions yet.</div>
+              ) : (
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {character.companions.map((c) => (
+                    <div key={c.id} className="bar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ fontWeight: 900 }}>{c.name}</div>
+                        <div className="fine">{c.relationship}/100</div>
+                      </div>
+                      <div className="hpTrack" aria-label="Relationship bar">
+                        <div
+                          className="hpFill"
+                          style={{
+                            width: `${Math.max(0, Math.min(100, c.relationship))}%`,
+                            backgroundColor: `hsl(${Math.round((c.relationship / 100) * 120)} 70% 50%)`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ marginTop: 12 }}>
+                <button className="cm_button" onClick={() => setCompanionsOpen(false)}>Close</button>
+              </div>
+            </ModalCard>
+          ) : null}
+
+          {inventoryOpen ? (
+            <ModalCard category={'Inventory'} title={'Inventory'}>
+              {character.inventory.length === 0 ? (
+                <div className="fine">Your inventory is empty (for now).</div>
+              ) : (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {character.inventory.map((it, idx) => (
+                    <div key={`${it}_${idx}`} className="bar" style={{ justifyContent: 'space-between' }}>
+                      <div style={{ fontWeight: 800 }}>{it}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ marginTop: 12 }}>
+                <button className="cm_button" onClick={() => setInventoryOpen(false)}>Close</button>
+              </div>
             </ModalCard>
           ) : null}
         </main>
