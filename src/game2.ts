@@ -6,25 +6,82 @@ const NAME_FIRST_F: string[] = ['Astra', 'Lilith', 'Morgana', 'Nyx', 'Seraphine'
 const NAME_FIRST_M: string[] = ['Bromley', 'Thorn', 'Garrick', 'Roland', 'Osric', 'Dorian', 'Milo', 'Cedric']
 const NAME_LAST: string[] = ['Underfoot', 'Tax-Evasion', 'McSidequest', 'the Uninsured', 'von Bad Idea', 'of Regret', 'Two-Swords', 'Half-Plan']
 
+function d6() {
+  return 1 + Math.floor(Math.random() * 6)
+}
+
+function roll4d6DropLowest() {
+  const rolls = [d6(), d6(), d6(), d6()].sort((a, b) => a - b)
+  return rolls[1] + rolls[2] + rolls[3]
+}
+
+function clampStat(n: number) {
+  return clamp(n, 3, 18)
+}
+
+function statPriorityForClass(className: Character['className']): Array<keyof Stats> {
+  switch (className) {
+    case 'Rogue':
+      return ['DEX', 'INT', 'CHA', 'CON', 'WIS', 'STR']
+    case 'Wizard':
+      return ['INT', 'WIS', 'CON', 'DEX', 'CHA', 'STR']
+    case 'Barbarian':
+      return ['STR', 'CON', 'DEX', 'WIS', 'CHA', 'INT']
+    case 'Fighter':
+      return ['STR', 'CON', 'DEX', 'WIS', 'CHA', 'INT']
+    case 'Paladin':
+      return ['CHA', 'STR', 'CON', 'WIS', 'DEX', 'INT']
+    case 'Druid':
+      return ['WIS', 'CON', 'INT', 'DEX', 'CHA', 'STR']
+  }
+}
+
+export function generateStats(input: {
+  className: Character['className']
+  mode: StatGenMode
+}): Stats {
+  const rolls = Array.from({ length: 6 }, roll4d6DropLowest).sort((a, b) => b - a)
+
+  const keys: Array<keyof Stats> = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']
+
+  if (input.mode === 'chaos') {
+    const shuffled = [...rolls]
+    // Fisher–Yates
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+
+    const out: any = {}
+    keys.forEach((k, idx) => (out[k] = clampStat(shuffled[idx] ?? 10)))
+    return out as Stats
+  }
+
+  // weighted: assign best rolls to class priorities.
+  const prio = statPriorityForClass(input.className)
+  const out: any = {}
+  prio.forEach((k, idx) => (out[k] = clampStat(rolls[idx] ?? 10)))
+  // Ensure all keys exist
+  keys.forEach((k) => {
+    if (typeof out[k] !== 'number') out[k] = 10
+  })
+  return out as Stats
+}
+
+export type StatGenMode = 'weighted' | 'chaos'
+
 export function makeNewCharacter(input: {
   name?: string
   sex: Character['sex']
   className: Character['className']
   alignment: Character['alignment']
   stats?: Stats
+  statGenMode?: StatGenMode
 }): Character {
-  const base: Stats = { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 }
+  const stats: Stats =
+    input.stats ??
+    generateStats({ className: input.className, mode: input.statGenMode ?? 'weighted' })
 
-  const bumps: Record<Character['className'], Partial<Stats>> = {
-    Rogue: { DEX: 14, INT: 12, CHA: 11 },
-    Wizard: { INT: 15, WIS: 12, CON: 11 },
-    Barbarian: { STR: 15, CON: 14, INT: 8 },
-    Fighter: { STR: 14, CON: 13, DEX: 12 },
-    Paladin: { STR: 13, CHA: 14, CON: 12 },
-    Druid: { WIS: 15, CON: 12, INT: 11 },
-  }
-
-  const stats: Stats = input.stats ?? ({ ...base, ...bumps[input.className] } as Stats)
   const maxHp = 10 + modFromStat(stats.CON) + (input.className === 'Barbarian' ? 4 : 0)
 
   const hitDieSize: Character['hitDieSize'] =
