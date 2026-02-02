@@ -146,6 +146,7 @@ export type UIStage =
   | { kind: 'roll'; scene: Scene; pending: PendingRoll }
   | { kind: 'outcome'; scene: Scene; outcomeText: string }
   | { kind: 'combat'; combat: CombatState }
+  | { kind: 'dead' }
 
 export type SaveFile = {
   version: 4

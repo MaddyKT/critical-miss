@@ -414,6 +414,21 @@ function newCampaign(): CampaignState {
   return { arcId: arcId as CampaignArcId, act: 1, progress: 0, flags: {}, seenSceneIds: [] }
 }
 
+export function restartAdventure(c: Character): Character {
+  // Keep the character identity/stats, but start a fresh campaign.
+  return {
+    ...c,
+    day: 1,
+    hp: c.maxHp,
+    hitDiceRemaining: c.hitDiceMax,
+    spellSlotsRemaining: c.spellSlotsMax,
+    nextSceneId: null,
+    lastSceneId: null,
+    recentSceneIds: [],
+    campaign: newCampaign(),
+  }
+}
+
 const ARC_META: Record<CampaignArcId, { title: string; blurb: string }> = {
   starfall: {
     title: 'Star-Fall Engine',

@@ -3,9 +3,9 @@ import './App.css'
 import type { ClassName, RaceName, SaveFile, Sex } from './types'
 import { SCENARIO_PACKS, type ScenarioPack } from './scenarioPacks'
 import { clearSave, loadSave, saveGame } from './storage'
-import { modFromStat, pick } from './utils'
+import { clamp, modFromStat, pick, rollDie } from './utils'
 import { ModalCard } from './components/ModalCard'
-import { generateBackground, makeNewCharacter, nextTurnScene, resolveRoll, chooseToRoll, randomName } from './game2'
+import { generateBackground, makeNewCharacter, nextTurnScene, resolveRoll, chooseToRoll, randomName, restartAdventure } from './game2'
 import { enemyTurn, playerAttack, playerGuard, playerRun, cantripForClass, spellForClass, weaponForClass } from './combat'
 import { longRest, shortRest } from './rest'
 import { DiceModal } from './dice/DiceModal'
@@ -38,6 +38,8 @@ export default function App() {
 
   const [companionsOpen, setCompanionsOpen] = useState(false)
   const [inventoryOpen, setInventoryOpen] = useState(false)
+
+  const [adWatching, setAdWatching] = useState(false)
 
   useEffect(() => {
     saveGame(save)
@@ -93,6 +95,17 @@ export default function App() {
     const pending = save.stage.pending
     const { c, log, outcomeText } = resolveRoll(character, scene, pending, roll)
 
+    // Death check
+    if (c.hp <= 0) {
+      setSave((prev) => ({
+        ...prev,
+        character: c,
+        log: [...prev.log, ...log, { id: `log_${Date.now()}_dead`, day: c.day, text: 'You died.' }],
+        stage: { kind: 'dead' },
+      }))
+      return
+    }
+
     // Some outcomes will trigger combat instead of direct HP loss.
     const combatToStart = (c.flags as any)?.__startCombat
     if (combatToStart && typeof combatToStart === 'object') {
@@ -145,10 +158,18 @@ export default function App() {
     if (restOpen.kind === 'short') {
       const used = restRolls.length ? restRolls : [1]
       const r = shortRest(character, used, restConsequenceRoll, restStoryRoll)
-      setSave((prev) => ({ ...prev, character: r.c, log: [...prev.log, ...r.log] }))
+      if (r.c.hp <= 0) {
+        setSave((prev) => ({ ...prev, character: r.c, log: [...prev.log, ...r.log, { id: `log_${Date.now()}_dead`, day: r.c.day, text: 'You died.' }], stage: { kind: 'dead' } }))
+      } else {
+        setSave((prev) => ({ ...prev, character: r.c, log: [...prev.log, ...r.log] }))
+      }
     } else {
       const r = longRest(character, restConsequenceRoll, restStoryRoll)
-      setSave((prev) => ({ ...prev, character: r.c, log: [...prev.log, ...r.log] }))
+      if (r.c.hp <= 0) {
+        setSave((prev) => ({ ...prev, character: r.c, log: [...prev.log, ...r.log, { id: `log_${Date.now()}_dead`, day: r.c.day, text: 'You died.' }], stage: { kind: 'dead' } }))
+      } else {
+        setSave((prev) => ({ ...prev, character: r.c, log: [...prev.log, ...r.log] }))
+      }
     }
 
     setRestOpen(null)
@@ -474,13 +495,12 @@ export default function App() {
                       const e = enemyTurn(r.c, { ...r.combat, enemy: { ...r.combat.enemy } })
                       // lose?
                       if (e.c.hp <= 0) {
-                        const out = e.combat.onLose
                         const c2 = e.c
                         setSave((prev) => ({
                           ...prev,
                           character: c2,
-                          log: [...prev.log, { id: `log_${Date.now()}`, day: c2.day, text: r.text }, { id: `log_${Date.now()}_e`, day: c2.day, text: e.text }, ...(out.logs ?? []).map((t) => ({ id: `log_${Date.now()}_${Math.random()}`, day: c2.day, text: t }))],
-                          stage: { kind: 'outcome', scene: { id: 'combat', category: 'Combat', title: 'Defeat', body: '', choices: [] } as any, outcomeText: out.text },
+                          log: [...prev.log, { id: `log_${Date.now()}`, day: c2.day, text: r.text }, { id: `log_${Date.now()}_e`, day: c2.day, text: e.text }, { id: `log_${Date.now()}_dead`, day: c2.day, text: 'You died.' }],
+                          stage: { kind: 'dead' },
                         }))
                         return
                       }
@@ -569,13 +589,12 @@ export default function App() {
                       const g = playerGuard(save.stage.combat)
                       const e = enemyTurn(character, g.combat)
                       if (e.c.hp <= 0) {
-                        const out = e.combat.onLose
                         const c2 = e.c
                         setSave((prev) => ({
                           ...prev,
                           character: c2,
-                          log: [...prev.log, { id: `log_${Date.now()}`, day: c2.day, text: g.text }, { id: `log_${Date.now()}_e`, day: c2.day, text: e.text }, ...(out.logs ?? []).map((t) => ({ id: `log_${Date.now()}_${Math.random()}`, day: c2.day, text: t }))],
-                          stage: { kind: 'outcome', scene: { id: 'combat', category: 'Combat', title: 'Defeat', body: '', choices: [] } as any, outcomeText: out.text },
+                          log: [...prev.log, { id: `log_${Date.now()}`, day: c2.day, text: g.text }, { id: `log_${Date.now()}_e`, day: c2.day, text: e.text }, { id: `log_${Date.now()}_dead`, day: c2.day, text: 'You died.' }],
+                          stage: { kind: 'dead' },
                         }))
                         return
                       }
@@ -628,6 +647,93 @@ export default function App() {
               <button className="cm_button" onClick={closeOutcome}>
                 OK
               </button>
+            </ModalCard>
+          ) : null}
+
+          {save.stage.kind === 'dead' ? (
+            <ModalCard category={'Death'} title={'You died.'}>
+              <div style={{ marginBottom: 10 }}>
+                Your HP hit zero.
+              </div>
+              <div className="fine" style={{ marginBottom: 12, opacity: 0.85 }}>
+                (Revive is an ad prototype for now. “New adventure” will be premium later.)
+              </div>
+
+              <div style={{ display: 'grid', gap: 10 }}>
+                <button
+                  className="cm_button"
+                  disabled={adWatching}
+                  onClick={() => {
+                    if (!character) return
+                    if (adWatching) return
+
+                    // Prototype ad flow.
+                    setAdWatching(true)
+                    setTimeout(() => {
+                      setAdWatching(false)
+
+                      if (character.hitDiceRemaining <= 0) {
+                        setSave((prev) => ({
+                          ...prev,
+                          log: [...prev.log, { id: `log_${Date.now()}_nohd`, day: character.day, text: 'No hit dice remaining. You cannot revive.' }],
+                        }))
+                        return
+                      }
+
+                      const conMod = modFromStat(character.stats.CON)
+                      const heal = Math.max(1, rollDie(character.hitDieSize) + conMod)
+                      const nextHp = clamp(heal, 1, character.maxHp)
+
+                      const revived = {
+                        ...character,
+                        hp: nextHp,
+                        hitDiceRemaining: clamp(character.hitDiceRemaining - 1, 0, character.hitDiceMax),
+                      }
+
+                      setSave((prev) => ({
+                        ...prev,
+                        character: revived,
+                        log: [...prev.log, { id: `log_${Date.now()}_revive`, day: revived.day, text: `You revive with ${nextHp} HP.` }],
+                        stage: { kind: 'idle' },
+                      }))
+                    }, 1200)
+                  }}
+                >
+                  {adWatching ? 'Watching ad…' : `Watch ad → roll 1d${character.hitDieSize} to revive`}
+                </button>
+
+                <button
+                  className="cm_button"
+                  onClick={() => {
+                    if (confirm('Die forever? This will end the run.')) {
+                      clearSave()
+                      setSave({ version: 4, character: null, log: [], stage: { kind: 'idle' } })
+                    }
+                  }}
+                >
+                  Die forever
+                </button>
+
+                <button
+                  className="cm_button"
+                  onClick={() => {
+                    if (!character) return
+                    const next = restartAdventure(character)
+                    const bg = generateBackground(next)
+                    setSave({
+                      version: 4,
+                      character: next,
+                      log: [
+                        { id: `log_${Date.now()}_newadv`, day: 0, text: 'A new adventure begins.' },
+                        { id: `log_${Date.now()}_bg`, day: 0, text: bg },
+                      ],
+                      stage: { kind: 'idle' },
+                    })
+                  }}
+                >
+                  Start a new adventure (same character)
+                </button>
+              </div>
             </ModalCard>
           ) : null}
 
