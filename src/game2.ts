@@ -369,87 +369,44 @@ function advanceArc(c: Character, delta: number): Character {
 }
 
 function newCampaign(): CampaignState {
-  // Only the new big fantasy adventure arcs for now.
-  const arcId = weightedPick([
-    { id: 'princess', weight: 1 },
-    { id: 'plague', weight: 1 },
-    { id: 'catastrophe', weight: 1 },
-  ] as any)
+  // Single authored campaign for now.
+  const arcId = 'starfall'
   return { arcId: arcId as CampaignArcId, act: 1, progress: 0, flags: {}, seenSceneIds: [] }
 }
 
 const ARC_META: Record<CampaignArcId, { title: string; blurb: string }> = {
-  princess: {
-    title: 'The Stolen Heir',
-    blurb: 'A princess is taken. The realm holds its breath. You do not.',
-  },
-  plague: {
-    title: 'Ashwater Plague',
-    blurb: 'A sickness spreads faster than truth. Find the cure before the bell tolls for everyone.',
-  },
-  catastrophe: {
-    title: 'The Skybreak Omen',
-    blurb: 'The mountain groans. The sky burns at night. Something ancient is waking.',
+  starfall: {
+    title: 'Star-Fall Engine',
+    blurb: 'A comet hangs too low. An ancient dwarven engine groans beneath the mountain.',
   },
 }
 
 const ARC_SCENE_POOLS: Record<CampaignArcId, Record<1 | 2 | 3, Array<{ id: string; weight: number }>>> = {
-  princess: {
+  starfall: {
     1: [
-      { id: 'court.missing_princess', weight: 4 },
-      { id: 'road.royal_messenger', weight: 3 },
-      { id: 'forest.tracks', weight: 2 },
+      { id: 'starfall.observatory', weight: 4 },
+      { id: 'starfall.watchtower', weight: 2 },
+      { id: 'starfall.stonewake', weight: 3 },
     ],
     2: [
-      { id: 'forest.bandit_ambush', weight: 3 },
-      { id: 'ruins.witch_gate', weight: 3 },
-      { id: 'keep.outer_wall', weight: 3 },
+      { id: 'starfall.windbridge', weight: 2 },
+      { id: 'starfall.bramdur_gate', weight: 3 },
+      { id: 'starfall.korrin_lift', weight: 2 },
+      { id: 'starfall.varyn_bells', weight: 3 },
+      { id: 'starfall.craterwood', weight: 2 },
+      { id: 'starfall.anchor_vault', weight: 3 },
+      { id: 'starfall.choir_sabotage', weight: 2 },
     ],
     3: [
-      { id: 'keep.tower_rescue', weight: 4 },
-      { id: 'keep.escape', weight: 2 },
-    ],
-  },
-
-  plague: {
-    1: [
-      { id: 'village.ashwater', weight: 4 },
-      { id: 'village.sickhouse', weight: 3 },
-      { id: 'chapel.prayer', weight: 1 },
-    ],
-    2: [
-      { id: 'swamp.rare_herb', weight: 3 },
-      { id: 'lab.apothecary', weight: 3 },
-      { id: 'road.quarantine', weight: 2 },
-    ],
-    3: [
-      { id: 'catacombs.source', weight: 3 },
-      { id: 'temple.cure_ritual', weight: 3 },
-    ],
-  },
-
-  catastrophe: {
-    1: [
-      { id: 'observatory.red_comet', weight: 4 },
-      { id: 'mountain.tremors', weight: 3 },
-      { id: 'town.omens', weight: 2 },
-    ],
-    2: [
-      { id: 'cult.black_chant', weight: 3 },
-      { id: 'ruins.ancient_engine', weight: 3 },
-      { id: 'mountain.rift', weight: 2 },
-    ],
-    3: [
-      { id: 'skybreak.finale', weight: 4 },
-      { id: 'skybreak.aftermath', weight: 2 },
+      { id: 'starfall.rift_mouth', weight: 2 },
+      { id: 'starfall.engine_heart', weight: 4 },
+      { id: 'starfall.aftermath', weight: 2 },
     ],
   },
 }
 
 const ARC_FINALES: Record<CampaignArcId, string> = {
-  princess: 'keep.tower_rescue',
-  plague: 'temple.cure_ritual',
-  catastrophe: 'skybreak.finale',
+  starfall: 'starfall.engine_heart',
 }
 
 function scene(id: string, category: string, title: string, body: string, choices: SceneChoice[]): Scene {
@@ -458,7 +415,7 @@ function scene(id: string, category: string, title: string, body: string, choice
 
 function getSceneById(id: string): Scene {
   const s = SCENES[id]
-  if (!s) return SCENES['court.missing_princess']
+  if (!s) return SCENES['starfall.observatory']
   return s
 }
 
@@ -528,7 +485,251 @@ function makeFillerScene(c: Character): Scene {
 }
 
 const SCENES: Record<string, Scene> = {
-  // Only the new adventure arcs are active right now.
+  // ARC — Star-Fall Engine (Ancient dwarven)
+  'starfall.observatory': scene(
+    'starfall.observatory',
+    'Observatory',
+    'The Low Comet',
+    'At Cliff Observatory, Master Astronomer Ilyra Voss holds a slate of star-charts against the lantern light. A red comet hangs too low in the sky, steady as a nail.\n\n“Skybreak Mountain is waking,” she says. “If the old wards fail, it will not just be the mountain that breaks.”',
+    [
+      {
+        id: 'study',
+        text: 'Study the charts',
+        stat: 'INT',
+        dc: 12,
+        onSuccess: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 3 }, 'starfall_charts'), 12),
+          text: 'You learn the pattern: the comet is not drifting. It is being held in place by something below. +3 XP.',
+          logs: ['Clue: “bound trajectory” noted on the charts'],
+        }),
+        onFail: (ch) => ({
+          c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10),
+          text: 'The numbers blur, but the conclusion is simple: this is not natural. +1 XP.',
+        }),
+      },
+      {
+        id: 'question',
+        text: 'Question Ilyra about the wards',
+        stat: 'WIS',
+        dc: 12,
+        onSuccess: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch }, 'starfall_wards'), 10),
+          text: 'She names it plainly: a dwarven machine under Skybreak. “The Star-Fall Engine.” The words sound like a warning.',
+          logs: ['Named: Star-Fall Engine'],
+        }),
+        onFail: (ch) => ({
+          c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8),
+          text: 'She speaks carefully and gives you the one thing you need: a direction and a deadline. +1 XP.',
+        }),
+      },
+      {
+        id: 'go',
+        text: 'Leave for Skybreak at once',
+        stat: 'CON',
+        dc: 11,
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You pack quickly and leave before dawn. +2 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 8), text: 'You rush and pay for it with a twisted ankle. -1 HP.' }),
+      },
+    ]
+  ),
+
+  'starfall.watchtower': scene(
+    'starfall.watchtower',
+    'Watchtower',
+    'Captain Pike',
+    'The Mountain Watch keeps a stone tower above the switchbacks. Captain Jorren Pike meets you at the door, eyes on the sky and hand on a spear.\n\n“We hold the road,” he says. “You go higher. If you hear the stone start to sing, don’t stand under anything you like.”',
+    [
+      {
+        id: 'earn',
+        text: 'Earn Pike’s trust',
+        stat: 'CHA',
+        dc: 13,
+        onSuccess: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 3 }, 'starfall_pike'), 12),
+          text: 'He gives you a stamped writ and a coil of good rope. “Bring me proof the engine still runs.” +3 XP.',
+          logs: ['Item: Watch Writ (stamped)'],
+        }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'He doesn’t like speeches. He still lets you pass. +1 XP.' }),
+      },
+      {
+        id: 'route',
+        text: 'Ask for the safest route',
+        stat: 'WIS',
+        dc: 12,
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'He marks a path that avoids the worst rockfall. It costs time. +2 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'He points up the mountain. “There is no safe route. Only routes.” +1 XP.' }),
+      },
+      {
+        id: 'push',
+        text: 'Push into the high pass',
+        stat: 'CON',
+        dc: 13,
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You climb until your breath turns sharp. +2 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'Cold and altitude take their due. -2 HP.' }),
+      },
+    ]
+  ),
+
+  'starfall.stonewake': scene(
+    'starfall.stonewake',
+    'Ruins',
+    'Stonewake Hall',
+    'Stonewake Hall is cut straight into the mountain. Dwarven runes cover the lintel like a diagram. Inside, a ring of bronze and stone hums faintly, warm under your palm.',
+    [
+      {
+        id: 'inspect',
+        text: 'Inspect the ring and its markings',
+        stat: 'INT',
+        dc: 13,
+        onSuccess: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch, inventory: [...ch.inventory, 'Sigil-Shard'] }, 'starfall_sigil'), 14),
+          text: 'You find a missing segment: a Sigil-Shard, broken free from its socket. It fits your hand like a key.',
+          logs: ['Item acquired: Sigil-Shard'],
+        }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'A hidden edge bites your fingers as the ring shifts. -1 HP.' }),
+      },
+      {
+        id: 'listen',
+        text: 'Listen to the hum',
+        stat: 'WIS',
+        dc: 12,
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'The sound has a rhythm. It matches the tremors outside. The machine is answering the mountain. +3 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You hear only stone and your own breathing. +1 XP.' }),
+      },
+      {
+        id: 'leave',
+        text: 'Leave before anything else moves',
+        stat: 'DEX',
+        dc: 11,
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You back out without making noise. +1 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 8), text: 'Loose gravel slides underfoot. You catch yourself late. -1 HP.' }),
+      },
+    ]
+  ),
+
+  'starfall.windbridge': scene(
+    'starfall.windbridge',
+    'Pass',
+    'Windbridge Pass',
+    'Windbridge Pass is a span of iron chains and stone teeth over a deep cut in the mountain. The wind comes through like a living thing and tries to peel you from the walkway.',
+    [
+      { id: 'cross', text: 'Cross carefully', stat: 'DEX', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You keep three points of contact and make it across. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'The bridge snaps you sideways into chain and stone. -2 HP.' }) },
+      { id: 'wait', text: 'Wait for a lull', stat: 'WIS', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You move when the wind hesitates. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'The wind does not hesitate. You cross anyway. +1 XP.' }) },
+      { id: 'race', text: 'Run for it', stat: 'CON', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You sprint and keep your footing. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 10), text: 'You run at the wrong moment. The wind slams you into the rail. -3 HP.' }) },
+    ]
+  ),
+
+  'starfall.bramdur_gate': scene(
+    'starfall.bramdur_gate',
+    'Gate',
+    'Bramdur Gate',
+    'A dwarven pressure door blocks the corridor—stone fused to bronze. A warning is carved in clean, readable runes: “DO NOT REMOVE THE PIN.” The pin is missing.',
+    [
+      { id: 'solve', text: 'Work the mechanism', stat: 'INT', dc: 14, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 4 }, 'starfall_gate_open'), 14), text: 'You seat the gears by hand and bleed off pressure. The door unlocks with a low sigh. +4 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'The mechanism bites back. Hot metal kisses your palm. -2 HP.' }) },
+      { id: 'force', text: 'Force it', stat: 'STR', dc: 15, onSuccess: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp), xp: ch.xp + 3 }, 12), text: 'You wrench the door enough to slip through. Your shoulder pays for it. -1 HP, +3 XP.' }), onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'rival', onWin: { text: 'You drive them back and take the corridor.', logs: ['Combat won: Bramdor Gate'] }, onLose: { text: 'You are forced away from the door.', logs: ['Combat lost: Bramdor Gate'] }, onFlee: { text: 'You retreat into side tunnels.', logs: ['Fled: Bramdor Gate'] } }) as any } }, 'starfall_gate_fight'), 10), text: 'Your noise brings black-robed figures from the dark.' }) },
+      { id: 'mark', text: 'Mark it and move on', stat: 'WIS', dc: 11, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You memorize the layout and move before you waste time. +1 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You lose your place in the tunnels and circle back. +1 XP.' }) },
+    ]
+  ),
+
+  'starfall.korrin_lift': scene(
+    'starfall.korrin_lift',
+    'Works',
+    'Korrin Lift',
+    'A vertical lift shaft drops into darkness. The platform is chained, counterweighted, and jammed. Dwarven maker-marks cover the crank housing.',
+    [
+      { id: 'repair', text: 'Unjam the lift', stat: 'INT', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You clear grit and reset the governor. The platform descends smoothly. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'The crank snaps your knuckles. -1 HP.' }) },
+      { id: 'climb', text: 'Climb the chains', stat: 'DEX', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You climb hand over hand, slow and steady. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 10), text: 'A chain link shifts. You drop hard onto the platform. -3 HP.' }) },
+      { id: 'drop', text: 'Drop the counterweight (fast)', stat: 'STR', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You release it cleanly. The platform falls, controlled—barely. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'The platform lurches and slams. Your teeth click together. -2 HP.' }) },
+    ]
+  ),
+
+  'starfall.varyn_bells': scene(
+    'starfall.varyn_bells',
+    'Temple',
+    'Varyn Bell Chamber',
+    'A stone chamber holds a ring of dwarven bells tuned to different pitches. A bronze lens rests in a cradle, etched with fine lines like a map. The air here vibrates even when no one moves.',
+    [
+      { id: 'align', text: 'Align the tones', stat: 'WIS', dc: 14, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, inventory: [...ch.inventory, 'Harmonic Lens'] }, 'starfall_lens'), 14), text: 'You strike the bells in the right order. The lens warms and settles into your hand. It is meant to be carried.', logs: ['Item acquired: Harmonic Lens'] }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'You choose the wrong tone. The chamber answers with a pressure wave. -2 HP.' }) },
+      { id: 'study', text: 'Study the etchings', stat: 'INT', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'The lines are not decoration. They show how the engine routes force through the mountain. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You learn enough to know this place was built by engineers, not priests. +1 XP.' }) },
+      { id: 'leave', text: 'Leave quietly', stat: 'DEX', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You leave without disturbing the chamber. +1 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'A bell rings once as you pass. You keep going. +1 XP.' }) },
+    ]
+  ),
+
+  'starfall.craterwood': scene(
+    'starfall.craterwood',
+    'Wilds',
+    'Craterwood',
+    'The forest near the crater grows at angles that don’t look natural. Stones sit half an inch above the ground as if they forgot how weight works. Your hair lifts with static when you step near the rim.',
+    [
+      { id: 'track', text: 'Follow the strange tracks', stat: 'WIS', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You find bootprints that stop, then resume ten feet away. Someone has been jumping the weak spots.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'A patch of ground shifts under you. Your stomach lurches as gravity changes. -2 HP.' }) },
+      { id: 'sample', text: 'Take a shard of crater-stone', stat: 'INT', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'The stone is cold and heavy. It pulls at the light around it. +2 XP.', logs: ['Clue: crater-stone distorts light'] }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 8), text: 'The shard slips and cuts your palm. -1 HP.' }) },
+      { id: 'avoid', text: 'Avoid the crater rim', stat: 'DEX', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You keep to stable ground and lose less time than you fear. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You detour wider than you meant to. +1 XP.' }) },
+    ]
+  ),
+
+  'starfall.anchor_vault': scene(
+    'starfall.anchor_vault',
+    'Vault',
+    'Anchor Vault',
+    'A dwarven vault door sits in the rock with no handle—only a recessed seal and three grooves worn by use. The air here feels heavier, steadier. Like the mountain remembers how to hold itself.',
+    [
+      { id: 'open', text: 'Open the vault', stat: 'INT', dc: 14, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, inventory: [...ch.inventory, 'Anchor Seal'] }, 'starfall_anchor'), 16), text: 'The seal releases with a click. Inside rests the Anchor Seal, warm and dense as forged truth.', logs: ['Item acquired: Anchor Seal'] }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'A pressure vent hisses. Heat burns your forearm. -2 HP.' }) },
+      { id: 'listen', text: 'Listen for guards', stat: 'WIS', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You hear quiet voices beyond the stone—The Black Choir is close.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'Only your own breath answers you. +1 XP.' }) },
+      { id: 'rush', text: 'Take it fast', stat: 'DEX', dc: 14, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, inventory: [...ch.inventory, 'Anchor Seal'] }, 'starfall_anchor'), 14), text: 'You take the seal and leave before anyone can close the corridor behind you.', logs: ['Item acquired: Anchor Seal'] }), onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'rival', onWin: { text: 'You hold the corridor long enough to escape with the seal.', logs: ['Combat won: Anchor Vault'] }, onLose: { text: 'They beat you back from the vault.', logs: ['Combat lost: Anchor Vault'] }, onFlee: { text: 'You flee into the side works, seal in hand.', logs: ['Fled: Anchor Vault'] } }) as any } }, 'starfall_anchor_fight'), 12), text: 'Boots on stone. Black robes in lantern light.' }) },
+    ]
+  ),
+
+  'starfall.choir_sabotage': scene(
+    'starfall.choir_sabotage',
+    'Tunnels',
+    'Sabotage',
+    'A section of dwarven works has been wrecked on purpose. A support pin lies on the floor beside fresh footprints. Someone removed what the runes said not to remove.',
+    [
+      { id: 'repair', text: 'Re-seat the pin and stabilize the works', stat: 'INT', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 4 }, 14), text: 'You wedge the pin back into place and brace the beam. The tunnel stops complaining. +4 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'Stone shifts. Dust floods your lungs. -2 HP.' }) },
+      { id: 'hunt', text: 'Follow the footprints', stat: 'WIS', dc: 13, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch }, 'starfall_choir_seen'), 12), text: 'You catch sight of them: black robes, disciplined spacing, moving uphill toward the rift.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'The prints vanish in rubble. They are still ahead of you. +1 XP.' }) },
+      { id: 'push', text: 'Push onward', stat: 'CON', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You keep moving. The air grows hotter. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 8), text: 'You push through dust and scrape your knee on stone. -1 HP.' }) },
+    ]
+  ),
+
+  'starfall.rift_mouth': scene(
+    'starfall.rift_mouth',
+    'Rift',
+    'Rift Mouth',
+    'The rift is a crack down into heat and copper air. Far below, a steady hum rises through the stone. The comet’s red light seems to lean toward the opening.',
+    [
+      { id: 'descend', text: 'Descend into the rift', stat: 'DEX', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You climb down with careful hands. The stone is warm enough to sting. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 10), text: 'You slip and slam into the wall. -3 HP.' }) },
+      { id: 'plan', text: 'Check your gear and plan the approach', stat: 'INT', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You choose a route through the broken catwalks. It will work if nothing changes. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You lose time arguing with the map in your head. +1 XP.' }) },
+      { id: 'listen', text: 'Listen for chanting', stat: 'WIS', dc: 12, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch }, 'starfall_chant'), 10), text: 'You hear it: voices keeping time with the engine’s hum. The Choir is already inside.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'Only the engine answers you. +1 XP.' }) },
+    ]
+  ),
+
+  'starfall.engine_heart': scene(
+    'starfall.engine_heart',
+    'Engine',
+    'The Engine Heart',
+    'The Star-Fall Engine fills a chamber the size of a chapel—bronze rings, stone columns, and runes cut like instructions. The Black Choir stands in a wide circle, chanting in measured breaths.\n\nThree sockets wait at the central console.',
+    [
+      { id: 'keys', text: 'Set the keys and stabilize the engine', stat: 'INT', dc: 15, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10, gold: ch.gold + 12 }, 24), text: 'You fit the pieces where they belong and turn the sequence back into safety. The hum steadies. The comet holds. +12 gold, +10 XP.', logs: ['Campaign complete: Star-Fall Engine'] }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 4, 0, ch.maxHp) }, 14), text: 'The console kicks back with heat and force. The chamber tilts for a heartbeat. -4 HP.' }) },
+      { id: 'break', text: 'Break the Choir’s circle', stat: 'STR', dc: 13, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'rival', onWin: { text: 'You break their line and buy the engine time to recover.', logs: ['Combat won: Engine Heart'] }, onLose: { text: 'They drag you down as the chant continues.', logs: ['Combat lost: Engine Heart'] }, onFlee: { text: 'You escape the circle and regroup behind the console.', logs: ['Fled: Engine Heart'] } }) as any } }, 'starfall_final_fight'), 14), text: 'You step into the circle and meet steel with steel.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'A blade finds you in the crush. -2 HP.' }) },
+      { id: 'counter', text: 'Speak the counter-words carved into the stone', stat: 'WIS', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 6 }, 14), text: 'You match their rhythm with older words. The chanting falters. The engine’s hum deepens. +6 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 12), text: 'Your voice breaks in the heat. The pressure answers. -3 HP.' }) },
+    ]
+  ),
+
+  'starfall.aftermath': scene(
+    'starfall.aftermath',
+    'Aftermath',
+    'A Sky That Holds',
+    'Dawn comes thin and pale over Skybreak. The comet is still there, but it no longer feels like it is falling. The mountain’s tremors ease into silence.',
+    [
+      { id: 'return', text: 'Return to the Watch', stat: 'CHA', dc: 11, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 10), text: 'Captain Pike listens, then nods once. “Good,” he says. “Now go sleep.” +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'The Watch believes results more than stories. You still brought results. +1 XP.' }) },
+      { id: 'leave', text: 'Leave before anyone turns you into a legend', stat: 'WIS', dc: 11, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You leave the mountain behind you. The road feels ordinary again. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You take one last look at the sky, then go. +1 XP.' }) },
+      { id: 'study', text: 'Speak with Ilyra and record what you learned', stat: 'INT', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'Ilyra writes without stopping. “This changes everything,” she says quietly. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'The notes are incomplete, but the warning is recorded. +1 XP.' }) },
+    ]
+  ),
+
+  // Only the Star-Fall campaign is active right now. Legacy scenes may remain in the file but are unreachable.
 
   // ARC — Treasure
   'tavern.rumor_black_road': scene(

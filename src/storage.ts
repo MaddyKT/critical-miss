@@ -64,11 +64,11 @@ function normalizeV4(save: SaveFile): SaveFile {
   if (typeof c.spellSlotsMax !== 'number') c.spellSlotsMax = 0
   if (typeof c.spellSlotsRemaining !== 'number') c.spellSlotsRemaining = c.spellSlotsMax
 
-  // campaign defaults (only allow our 3 arcs)
+  // campaign defaults (only allow our current arc)
   if (!c.campaign || typeof c.campaign !== 'object') {
-    c.campaign = { arcId: 'princess', act: 1, progress: 0, flags: {}, seenSceneIds: [] }
+    c.campaign = { arcId: 'starfall', act: 1, progress: 0, flags: {}, seenSceneIds: [] }
   }
-  if (!['princess', 'plague', 'catastrophe'].includes(c.campaign.arcId)) c.campaign.arcId = 'princess'
+  if (!['starfall'].includes(c.campaign.arcId)) c.campaign.arcId = 'starfall'
   if (!Array.isArray(c.campaign.seenSceneIds)) c.campaign.seenSceneIds = []
 
   save.character = c
