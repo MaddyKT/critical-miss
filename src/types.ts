@@ -2,6 +2,8 @@ export type ClassName = 'Rogue' | 'Wizard' | 'Barbarian' | 'Fighter' | 'Paladin'
 
 export type Sex = 'Male' | 'Female'
 
+export type RaceName = 'Human' | 'Elf' | 'Dwarf' | 'Halfling' | 'Orc' | 'Tiefling'
+
 export type Stats = {
   STR: number
   DEX: number
@@ -35,6 +37,7 @@ export type Companion = {
 export type Character = {
   name: string
   sex: Sex
+  race: RaceName
   className: ClassName
   alignment: 'Good' | 'Neutral' | 'Evil'
 
@@ -145,7 +148,7 @@ export type UIStage =
   | { kind: 'combat'; combat: CombatState }
 
 export type SaveFile = {
-  version: 3
+  version: 4
   character: Character | null
   log: GameLogEntry[]
   stage: UIStage

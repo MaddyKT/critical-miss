@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
-import type { ClassName, SaveFile, Sex } from './types'
+import type { ClassName, RaceName, SaveFile, Sex } from './types'
 import { SCENARIO_PACKS, type ScenarioPack } from './scenarioPacks'
 import { clearSave, loadSave, saveGame } from './storage'
 import { modFromStat, pick } from './utils'
@@ -10,17 +10,19 @@ import { enemyTurn, playerAttack, playerGuard, playerRun, cantripForClass, spell
 import { longRest, shortRest } from './rest'
 import { DiceModal } from './dice/DiceModal'
 
+const RACES: RaceName[] = ['Human', 'Elf', 'Dwarf', 'Halfling', 'Orc', 'Tiefling']
 const CLASSES: ClassName[] = ['Rogue', 'Wizard', 'Barbarian', 'Fighter', 'Paladin', 'Druid']
 const ALIGNMENTS: Array<'Good' | 'Neutral' | 'Evil'> = ['Good', 'Neutral', 'Evil']
 
 export default function App() {
   const [save, setSave] = useState<SaveFile>(() => {
     const s = loadSave() as any
-    if (!s || s.version !== 3) return { version: 3, character: null, log: [], stage: { kind: 'idle' } }
+    if (!s || s.version !== 4) return { version: 4, character: null, log: [], stage: { kind: 'idle' } }
     return s as SaveFile
   })
 
   const [sex, setSex] = useState<Sex>('Female')
+  const [race, setRace] = useState<RaceName>('Human')
   const [className, setClassName] = useState<ClassName>('Rogue')
   const [alignment, setAlignment] = useState<'Good' | 'Neutral' | 'Evil'>('Neutral')
   const [charName, setCharName] = useState('')
@@ -43,11 +45,12 @@ export default function App() {
 
   const character = save.character
 
-  const canStart = useMemo(() => !!className && !!alignment && !!sex, [className, alignment, sex])
+  const canStart = useMemo(() => !!className && !!alignment && !!sex && !!race, [className, alignment, sex, race])
 
   function randomize() {
     const s = pick(['Male', 'Female'] as const)
     setSex(s)
+    setRace(pick(RACES))
     setClassName(pick(CLASSES))
     setAlignment(pick(ALIGNMENTS))
     setCharName(randomName(s))
@@ -58,9 +61,9 @@ export default function App() {
   }
 
   function newGame() {
-    const c = makeNewCharacter({ name: charName.trim() || undefined, sex, className, alignment })
+    const c = makeNewCharacter({ name: charName.trim() || undefined, sex, race, className, alignment })
     const bg = generateBackground(c)
-    setSave({ version: 3, character: c, log: [{ id: `log_${Date.now()}`, day: 0, text: bg }], stage: { kind: 'idle' } })
+    setSave({ version: 4, character: c, log: [{ id: `log_${Date.now()}`, day: 0, text: bg }], stage: { kind: 'idle' } })
   }
 
   function nextTurn() {
@@ -167,7 +170,7 @@ export default function App() {
             onClick={() => {
               if (confirm('Wipe save and restart?')) {
                 clearSave()
-                setSave({ version: 3, character: null, log: [], stage: { kind: 'idle' } })
+                setSave({ version: 4, character: null, log: [], stage: { kind: 'idle' } })
               }
             }}
           >
@@ -220,6 +223,22 @@ export default function App() {
               >
                 Male
               </button>
+            </div>
+          </div>
+
+          <div className="row">
+            <label>Race</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              {RACES.map((r) => (
+                <button
+                  key={r}
+                  className={race === r ? 'primary' : 'ghost'}
+                  type="button"
+                  onClick={() => setRace(r)}
+                >
+                  {r}
+                </button>
+              ))}
             </div>
           </div>
 

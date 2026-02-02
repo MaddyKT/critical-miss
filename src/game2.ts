@@ -1,4 +1,4 @@
-import type { CampaignArcId, CampaignState, Character, GameLogEntry, Scene, SceneChoice, PendingRoll, Stats } from './types'
+import type { CampaignArcId, CampaignState, Character, GameLogEntry, Scene, SceneChoice, PendingRoll, Stats, RaceName } from './types'
 import { clamp, d20, modFromStat, pick, uid } from './utils'
 import { startCombat } from './combat'
 
@@ -73,6 +73,7 @@ export type StatGenMode = 'weighted' | 'chaos'
 export function makeNewCharacter(input: {
   name?: string
   sex: Character['sex']
+  race: RaceName
   className: Character['className']
   alignment: Character['alignment']
   stats?: Stats
@@ -98,6 +99,7 @@ export function makeNewCharacter(input: {
   return {
     name: (input.name?.trim() || '').length ? input.name!.trim() : randomName(input.sex),
     sex: input.sex,
+    race: input.race,
     className: input.className,
     alignment: input.alignment,
 
@@ -146,7 +148,7 @@ export function generateBackground(c: Character) {
   ]
 
   const arc = ARC_META[c.campaign.arcId]
-  return `You are a ${c.sex.toLowerCase()} ${c.className.toLowerCase()} who was ${pick(hooks)}.\n\nCurrent campaign: ${arc.title} (Act ${c.campaign.act}).`
+  return `You are a ${c.race.toLowerCase()} ${c.sex.toLowerCase()} ${c.className.toLowerCase()} who was ${pick(hooks)}.\n\nCurrent campaign: ${arc.title} (Act ${c.campaign.act}).`
 }
 
 export function nextTurnScene(c: Character): Scene {

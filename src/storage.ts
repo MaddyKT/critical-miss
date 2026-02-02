@@ -2,32 +2,51 @@ import type { SaveFile } from './types'
 
 const KEY_V2 = 'critical-miss.save.v2'
 const KEY_V3 = 'critical-miss.save.v3'
+const KEY_V4 = 'critical-miss.save.v4'
 
 export function loadSave(): SaveFile {
   try {
+    const raw4 = localStorage.getItem(KEY_V4)
+    if (raw4) {
+      const parsed = JSON.parse(raw4)
+      if (parsed && parsed.version === 4) return normalizeV4(parsed as SaveFile)
+    }
+
+    // Migrate forward from v3 if present.
     const raw3 = localStorage.getItem(KEY_V3)
     if (raw3) {
       const parsed = JSON.parse(raw3)
-      if (parsed && parsed.version === 3) return normalizeV3(parsed as SaveFile)
+      if (parsed && parsed.version === 3) {
+        const migrated = normalizeV4({ ...parsed, version: 4 } as any)
+        try {
+          localStorage.setItem(KEY_V4, JSON.stringify(migrated))
+        } catch {
+          // ignore
+        }
+        return migrated
+      }
     }
 
     // Legacy: v2 save exists, but isn't compatible (new campaign state). Start fresh.
-    // (We keep the old key so you could migrate later if you want.)
     const raw2 = localStorage.getItem(KEY_V2)
     if (raw2) {
-      return { version: 3, character: null, log: [], stage: { kind: 'idle' } }
+      return { version: 4, character: null, log: [], stage: { kind: 'idle' } }
     }
 
-    return { version: 3, character: null, log: [], stage: { kind: 'idle' } }
+    return { version: 4, character: null, log: [], stage: { kind: 'idle' } }
   } catch {
-    return { version: 3, character: null, log: [], stage: { kind: 'idle' } }
+    return { version: 4, character: null, log: [], stage: { kind: 'idle' } }
   }
 }
 
-function normalizeV3(save: SaveFile): SaveFile {
+function normalizeV4(save: SaveFile): SaveFile {
   if (!save.character) return save
   const c: any = save.character
-  // Backfill fields added after v3 initial rollout.
+
+  // Backfill fields (now required)
+  if (typeof c.race !== 'string') c.race = 'Human'
+
+  // arrays
   if (!Array.isArray(c.inventory)) c.inventory = []
   if (!Array.isArray(c.companions)) c.companions = []
   if (typeof c.lastSceneId !== 'string') c.lastSceneId = null
@@ -42,10 +61,11 @@ function normalizeV3(save: SaveFile): SaveFile {
   if (typeof c.spellSlotsMax !== 'number') c.spellSlotsMax = 0
   if (typeof c.spellSlotsRemaining !== 'number') c.spellSlotsRemaining = c.spellSlotsMax
 
-  // campaign defaults
+  // campaign defaults (only allow our 3 arcs)
   if (!c.campaign || typeof c.campaign !== 'object') {
-    c.campaign = { arcId: 'taxman', act: 1, progress: 0, flags: {}, seenSceneIds: [] }
+    c.campaign = { arcId: 'princess', act: 1, progress: 0, flags: {}, seenSceneIds: [] }
   }
+  if (!['princess', 'plague', 'catastrophe'].includes(c.campaign.arcId)) c.campaign.arcId = 'princess'
   if (!Array.isArray(c.campaign.seenSceneIds)) c.campaign.seenSceneIds = []
 
   save.character = c
@@ -53,9 +73,9 @@ function normalizeV3(save: SaveFile): SaveFile {
 }
 
 export function saveGame(save: SaveFile) {
-  localStorage.setItem(KEY_V3, JSON.stringify(save))
+  localStorage.setItem(KEY_V4, JSON.stringify(save))
 }
 
 export function clearSave() {
-  localStorage.removeItem(KEY_V3)
+  localStorage.removeItem(KEY_V4)
 }
