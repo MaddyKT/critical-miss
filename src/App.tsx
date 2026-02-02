@@ -5,7 +5,7 @@ import { SCENARIO_PACKS, type ScenarioPack } from './scenarioPacks'
 import { clearSave, loadSave, saveGame } from './storage'
 import { clamp, modFromStat, pick, rollDie } from './utils'
 import { ModalCard } from './components/ModalCard'
-import { generateBackground, makeNewCharacter, nextTurnScene, resolveRoll, chooseToRoll, randomName, restartAdventure, xpForLevel } from './game2'
+import { generateBackground, makeNewCharacter, nextTurnScene, resolveRoll, chooseToRoll, randomName, restartAdventure, xpForLevel, proficiencyBonusForLevel } from './game2'
 import { enemyTurn, playerAttack, playerGuard, playerRun, cantripFor, spellFor, weaponForClass } from './combat'
 import { longRest, shortRest } from './rest'
 import { DiceModal } from './dice/DiceModal'
@@ -297,70 +297,112 @@ export default function App() {
       ) : (
         <main className="game">
           <section className="sheet">
-            <div className="nameRow">
-              <div className="charName">{character.name}</div>
-              <div className="pill">
-                L{character.level} {character.className}
-              </div>
-            </div>
-            <div className="bars">
-              <div className="bar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div className="barLabel">HP</div>
-                  <div className="barValue">
-                    {character.hp}/{character.maxHp}
+            {(() => {
+              const prof = proficiencyBonusForLevel(character.level)
+              const dexMod = modFromStat(character.stats.DEX)
+              const conMod = modFromStat(character.stats.CON)
+              const init = dexMod
+              const ac = 10 + dexMod
+              const speed = 30
+              const initials = character.name
+                .split(' ')
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((s) => s[0]!.toUpperCase())
+                .join('')
+
+              const xpCur = xpForLevel(character.level)
+              const xpNext = character.level >= 20 ? xpCur : xpForLevel(character.level + 1)
+              const xpSpan = Math.max(1, xpNext - xpCur)
+              const xpInto = Math.max(0, character.xp - xpCur)
+              const xpPct = Math.max(0, Math.min(100, (xpInto / xpSpan) * 100))
+
+              return (
+                <>
+                  <div className="dashHeader">
+                    <div className="dashIdentity">
+                      <div className="avatar" aria-hidden>
+                        {initials}
+                      </div>
+                      <div style={{ display: 'grid', gap: 2 }}>
+                        <div className="dashName">{character.name}</div>
+                        <div className="dashSub">
+                          {character.sex} • {character.race} • {character.className} • Level {character.level}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="dashHpBox">
+                      <div className="dashHpLabel">HIT POINTS</div>
+                      <div className="dashHpValue">
+                        {character.hp}/{character.maxHp}
+                      </div>
+                      <div className="hpTrack" aria-label="HP bar">
+                        <div
+                          className="hpFill"
+                          style={{
+                            width: `${Math.max(0, Math.min(100, (character.hp / Math.max(1, character.maxHp)) * 100))}%`,
+                            backgroundColor: (() => {
+                              const pct = Math.max(0, Math.min(1, character.hp / Math.max(1, character.maxHp)))
+                              const hue = Math.round(pct * 120)
+                              return `hsl(${hue} 85% 50%)`
+                            })(),
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="hpTrack" aria-label="HP bar">
-                  <div
-                    className="hpFill"
-                    style={{
-                      width: `${Math.max(0, Math.min(100, (character.hp / Math.max(1, character.maxHp)) * 100))}%`,
-                      backgroundColor: (() => {
-                        const pct = Math.max(0, Math.min(1, character.hp / Math.max(1, character.maxHp)))
-                        const hue = Math.round(pct * 120) // 120=green -> 0=red
-                        return `hsl(${hue} 85% 50%)`
-                      })(),
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="bar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div className="barLabel">XP</div>
-                  <div className="barValue">{character.xp}</div>
-                </div>
-                <div className="xpTrack" aria-label="XP bar">
-                  {(() => {
-                    const curStart = xpForLevel(character.level)
-                    const nextStart = character.level >= 20 ? curStart : xpForLevel(character.level + 1)
-                    const span = Math.max(1, nextStart - curStart)
-                    const into = Math.max(0, character.xp - curStart)
-                    const pct = Math.max(0, Math.min(100, (into / span) * 100))
-                    return <div className="xpFill" style={{ width: `${pct}%` }} />
-                  })()}
-                </div>
-                <div className="fine" style={{ opacity: 0.65 }}>
-                  Level {character.level}
-                  {' '}•{' '}
-                  {character.level >= 20
-                    ? 'Max level'
-                    : (() => {
-                        const curStart = xpForLevel(character.level)
-                        const nextStart = xpForLevel(character.level + 1)
-                        return `Progress to next: ${Math.max(0, character.xp - curStart)}/${Math.max(1, nextStart - curStart)}`
-                      })()}
-                </div>
-              </div>
-              <div className="bar">
-                <div className="barLabel">Gold</div>
-                <div className="barValue">{character.gold}</div>
-              </div>
-              <div className="bar">
-                <div className="barLabel">Day</div>
-                <div className="barValue">{character.day}</div>
-              </div>
-            </div>
+
+                  <div className="dashQuick">
+                    <div className="dashStatBox">
+                      <div className="dashStatTop">PROF</div>
+                      <div className="dashStatBig">+{prof}</div>
+                    </div>
+                    <div className="dashStatBox">
+                      <div className="dashStatTop">SPEED</div>
+                      <div className="dashStatBig">{speed} ft</div>
+                    </div>
+                    <div className="dashStatBox">
+                      <div className="dashStatTop">INIT</div>
+                      <div className="dashStatBig">{init >= 0 ? `+${init}` : init}</div>
+                    </div>
+                    <div className="dashStatBox">
+                      <div className="dashStatTop">AC</div>
+                      <div className="dashStatBig">{ac}</div>
+                    </div>
+                  </div>
+
+                  <div className="dashXp">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+                      <div className="dashXpLabel">XP</div>
+                      <div className="dashXpValue">
+                        {character.level >= 20 ? `${character.xp}` : `${xpInto}/${xpSpan}`}
+                      </div>
+                    </div>
+                    <div className="xpTrack" aria-label="XP bar">
+                      <div className="xpFill" style={{ width: `${character.level >= 20 ? 100 : xpPct}%` }} />
+                    </div>
+                    <div className="fine" style={{ opacity: 0.7 }}>
+                      CON mod {conMod >= 0 ? `+${conMod}` : conMod} • Hit Dice {character.hitDiceRemaining}/{character.hitDiceMax}
+                    </div>
+                  </div>
+
+                  <div className="dashAbilities">
+                    {(['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'] as const).map((k) => {
+                      const score = character.stats[k]
+                      const mod = modFromStat(score)
+                      return (
+                        <div key={k} className="abilityCard">
+                          <div className="abilityName">{k}</div>
+                          <div className="abilityMod">{mod >= 0 ? `+${mod}` : mod}</div>
+                          <div className="abilityScore">{score}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )
+            })()}
           </section>
 
           <section className="party">

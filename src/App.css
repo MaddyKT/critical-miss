@@ -103,6 +103,170 @@ select {
   padding: 12px;
 }
 
+.dashHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.dashIdentity {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.dashName {
+  font-weight: 900;
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashSub {
+  font-size: 12px;
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashHpBox {
+  min-width: 140px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  display: grid;
+  gap: 6px;
+}
+
+.dashHpLabel {
+  font-size: 11px;
+  opacity: 0.75;
+  letter-spacing: 0.5px;
+}
+
+.dashHpValue {
+  font-weight: 900;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.dashQuick {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.dashStatBox {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+
+.dashStatTop {
+  font-size: 11px;
+  opacity: 0.75;
+  letter-spacing: 0.5px;
+}
+
+.dashStatBig {
+  font-weight: 900;
+  font-size: 18px;
+}
+
+.dashXp {
+  margin-top: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  display: grid;
+  gap: 6px;
+}
+
+.dashXpLabel {
+  font-size: 11px;
+  opacity: 0.75;
+  letter-spacing: 0.5px;
+}
+
+.dashXpValue {
+  font-weight: 800;
+  opacity: 0.9;
+  font-size: 12px;
+}
+
+.dashAbilities {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.abilityCard {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.18);
+  padding: 10px;
+  text-align: center;
+  position: relative;
+}
+
+.abilityName {
+  font-size: 11px;
+  opacity: 0.75;
+  letter-spacing: 0.6px;
+}
+
+.abilityMod {
+  font-size: 22px;
+  font-weight: 900;
+  margin-top: 6px;
+}
+
+.abilityScore {
+  margin: 8px auto 0;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+@media (max-width: 980px) {
+  .game {
+    grid-template-columns: 1fr;
+  }
+  .dashQuick {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .nameRow {
   display: flex;
   align-items: center;

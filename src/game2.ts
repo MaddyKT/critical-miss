@@ -207,6 +207,15 @@ export function levelFromXp(xp: number) {
   return level
 }
 
+export function proficiencyBonusForLevel(level: number) {
+  const l = Math.max(1, Math.min(20, Math.floor(level)))
+  if (l >= 17) return 6
+  if (l >= 13) return 5
+  if (l >= 9) return 4
+  if (l >= 5) return 3
+  return 2
+}
+
 export function spellSlotsMaxFor(className: Character['className'], level: number) {
   // Very simplified "full caster" slot count.
   // (DnD uses spell levels; we're just giving a pool.)
