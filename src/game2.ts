@@ -19,6 +19,53 @@ function clampStat(n: number) {
   return clamp(n, 3, 18)
 }
 
+function clampStatAfterBonus(n: number) {
+  return clamp(n, 1, 20)
+}
+
+export function applyRaceBonuses(stats: Stats, race: RaceName): { stats: Stats; note: string } {
+  const s: Stats = { ...stats }
+  const add = (k: keyof Stats, n: number) => {
+    s[k] = clampStatAfterBonus((s[k] ?? 10) + n)
+  }
+
+  let note = ''
+
+  switch (race) {
+    case 'Human':
+      ;(['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'] as const).forEach((k) => add(k, 1))
+      note = '+1 to all stats'
+      break
+    case 'Elf':
+      add('DEX', 2)
+      add('INT', 1)
+      note = '+2 DEX, +1 INT'
+      break
+    case 'Dwarf':
+      add('CON', 2)
+      add('WIS', 1)
+      note = '+2 CON, +1 WIS'
+      break
+    case 'Halfling':
+      add('DEX', 2)
+      add('CHA', 1)
+      note = '+2 DEX, +1 CHA'
+      break
+    case 'Orc':
+      add('STR', 2)
+      add('CON', 1)
+      note = '+2 STR, +1 CON'
+      break
+    case 'Tiefling':
+      add('CHA', 2)
+      add('INT', 1)
+      note = '+2 CHA, +1 INT'
+      break
+  }
+
+  return { stats: s, note }
+}
+
 function statPriorityForClass(className: Character['className']): Array<keyof Stats> {
   switch (className) {
     case 'Rogue':
@@ -79,9 +126,11 @@ export function makeNewCharacter(input: {
   stats?: Stats
   statGenMode?: StatGenMode
 }): Character {
-  const stats: Stats =
+  const baseStats: Stats =
     input.stats ??
     generateStats({ className: input.className, mode: input.statGenMode ?? 'weighted' })
+
+  const { stats } = applyRaceBonuses(baseStats, input.race)
 
   const maxHp = 10 + modFromStat(stats.CON) + (input.className === 'Barbarian' ? 4 : 0)
 
@@ -148,7 +197,8 @@ export function generateBackground(c: Character) {
   ]
 
   const arc = ARC_META[c.campaign.arcId]
-  return `You are a ${c.race.toLowerCase()} ${c.sex.toLowerCase()} ${c.className.toLowerCase()} who was ${pick(hooks)}.\n\nCurrent campaign: ${arc.title} (Act ${c.campaign.act}).`
+  const raceNote = applyRaceBonuses(c.stats, c.race).note
+  return `You are a ${c.race.toLowerCase()} ${c.sex.toLowerCase()} ${c.className.toLowerCase()} who was ${pick(hooks)}.\n\nRace bonuses: ${raceNote}.\n\nCurrent campaign: ${arc.title} (Act ${c.campaign.act}).`
 }
 
 export function nextTurnScene(c: Character): Scene {
