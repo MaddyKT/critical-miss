@@ -162,8 +162,10 @@ export function generateStats(input: {
 
 export type StatGenMode = 'weighted' | 'chaos'
 
-// D&D 5e XP thresholds (levels 1..20). Index is level.
-const XP_FOR_LEVEL: number[] = [
+// D&D 5e XP thresholds (levels 1..20), scaled down for this game.
+// Goal: it should take multiple full campaigns to reach level 20.
+const XP_SCALE = 100
+const XP_FOR_LEVEL_RAW: number[] = [
   0,
   0, // level 1
   300,
@@ -186,6 +188,7 @@ const XP_FOR_LEVEL: number[] = [
   305000,
   355000, // level 20
 ]
+const XP_FOR_LEVEL: number[] = XP_FOR_LEVEL_RAW.map((x) => Math.ceil(x / XP_SCALE))
 
 export function xpForLevel(level: number) {
   const l = Math.max(1, Math.min(20, Math.floor(level)))
@@ -638,7 +641,7 @@ function makeFillerScene(c: Character): Scene {
       text: 'Push onward',
       stat: statA,
       dc: dcA,
-      onSuccess: (ch) => ({ c: { ...ch, xp: ch.xp + 2 }, text: 'You make good time. Your confidence grows legs. +2 XP.' }),
+      onSuccess: (ch) => ({ c: { ...ch, xp: ch.xp + 20 }, text: 'You make good time. +20 XP.' }),
       onFail: (ch) => ({ c: { ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, text: 'You trip over a root that was clearly placed by fate. -1 HP.' }),
     },
     {
@@ -647,7 +650,7 @@ function makeFillerScene(c: Character): Scene {
       stat: statB,
       dc: dcB,
       onSuccess: (ch) => ({ c: { ...ch, gold: ch.gold + 2 }, text: 'You find something valuable and mostly legal. +2 gold.' }),
-      onFail: (ch) => ({ c: { ...ch, xp: ch.xp + 1 }, text: 'You find nothing, but you do gain character. +1 XP.' }),
+      onFail: (ch) => ({ c: { ...ch, xp: ch.xp + 10 }, text: 'You find nothing, but you learn what doesn’t work. +10 XP.' }),
     },
   ]
 
@@ -668,13 +671,13 @@ const SCENES: Record<string, Scene> = {
         stat: 'INT',
         dc: 12,
         onSuccess: (ch) => ({
-          c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 3 }, 'starfall_charts'), 12),
-          text: 'You learn the pattern: the comet is not drifting. It is being held in place by something below. +3 XP.',
+          c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 30 }, 'starfall_charts'), 12),
+          text: 'You learn the pattern: the comet is not drifting. It is being held in place by something below. +30 XP.',
           logs: ['Clue: “bound trajectory” noted on the charts'],
         }),
         onFail: (ch) => ({
-          c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10),
-          text: 'The numbers blur, but the conclusion is simple: this is not natural. +1 XP.',
+          c: advanceArc({ ...ch, xp: ch.xp + 10 }, 10),
+          text: 'The numbers blur, but the conclusion is simple: this is not natural. +10 XP.',
         }),
       },
       {
@@ -688,8 +691,8 @@ const SCENES: Record<string, Scene> = {
           logs: ['Named: Star-Fall Engine'],
         }),
         onFail: (ch) => ({
-          c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8),
-          text: 'She speaks carefully and gives you the one thing you need: a direction and a deadline. +1 XP.',
+          c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8),
+          text: 'She speaks carefully and gives you the one thing you need: a direction and a deadline. +10 XP.',
         }),
       },
       {
@@ -697,7 +700,7 @@ const SCENES: Record<string, Scene> = {
         text: 'Leave for Skybreak at once',
         stat: 'CON',
         dc: 11,
-        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You pack quickly and leave before dawn. +2 XP.' }),
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 20 }, 10), text: 'You pack quickly and leave before dawn. +20 XP.' }),
         onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 8), text: 'You rush and pay for it with a twisted ankle. -1 HP.' }),
       },
     ]
@@ -715,26 +718,26 @@ const SCENES: Record<string, Scene> = {
         stat: 'CHA',
         dc: 13,
         onSuccess: (ch) => ({
-          c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 3 }, 'starfall_pike'), 12),
-          text: 'He gives you a stamped writ and a coil of good rope. “Bring me proof the engine still runs.” +3 XP.',
+          c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 30 }, 'starfall_pike'), 12),
+          text: 'He gives you a stamped writ and a coil of good rope. “Bring me proof the engine still runs.” +30 XP.',
           logs: ['Item: Watch Writ (stamped)'],
         }),
-        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'He doesn’t like speeches. He still lets you pass. +1 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'He doesn’t like speeches. He still lets you pass. +10 XP.' }),
       },
       {
         id: 'route',
         text: 'Ask for the safest route',
         stat: 'WIS',
         dc: 12,
-        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'He marks a path that avoids the worst rockfall. It costs time. +2 XP.' }),
-        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'He points up the mountain. “There is no safe route. Only routes.” +1 XP.' }),
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 20 }, 10), text: 'He marks a path that avoids the worst rockfall. It costs time. +20 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'He points up the mountain. “There is no safe route. Only routes.” +10 XP.' }),
       },
       {
         id: 'push',
         text: 'Push into the high pass',
         stat: 'CON',
         dc: 13,
-        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You climb until your breath turns sharp. +2 XP.' }),
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 20 }, 10), text: 'You climb until your breath turns sharp. +20 XP.' }),
         onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'Cold and altitude take their due. -2 HP.' }),
       },
     ]
@@ -763,15 +766,15 @@ const SCENES: Record<string, Scene> = {
         text: 'Listen to the hum',
         stat: 'WIS',
         dc: 12,
-        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'The sound has a rhythm. It matches the tremors outside. The machine is answering the mountain. +3 XP.' }),
-        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You hear only stone and your own breathing. +1 XP.' }),
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 30 }, 12), text: 'The sound has a rhythm. It matches the tremors outside. The machine is answering the mountain. +30 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'You hear only stone and your own breathing. +10 XP.' }),
       },
       {
         id: 'leave',
         text: 'Leave before anything else moves',
         stat: 'DEX',
         dc: 11,
-        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You back out without making noise. +1 XP.' }),
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'You back out without making noise. +10 XP.' }),
         onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 8), text: 'Loose gravel slides underfoot. You catch yourself late. -1 HP.' }),
       },
     ]
@@ -783,9 +786,9 @@ const SCENES: Record<string, Scene> = {
     'Windbridge Pass',
     'Windbridge Pass is a span of iron chains and stone teeth over a deep cut in the mountain. The wind comes through like a living thing and tries to peel you from the walkway.',
     [
-      { id: 'cross', text: 'Cross carefully', stat: 'DEX', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You keep three points of contact and make it across. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'The bridge snaps you sideways into chain and stone. -2 HP.' }) },
-      { id: 'wait', text: 'Wait for a lull', stat: 'WIS', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You move when the wind hesitates. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'The wind does not hesitate. You cross anyway. +1 XP.' }) },
-      { id: 'race', text: 'Run for it', stat: 'CON', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You sprint and keep your footing. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 10), text: 'You run at the wrong moment. The wind slams you into the rail. -3 HP.' }) },
+      { id: 'cross', text: 'Cross carefully', stat: 'DEX', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 30 }, 12), text: 'You keep three points of contact and make it across. +30 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'The bridge snaps you sideways into chain and stone. -2 HP.' }) },
+      { id: 'wait', text: 'Wait for a lull', stat: 'WIS', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 20 }, 10), text: 'You move when the wind hesitates. +20 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'The wind does not hesitate. You cross anyway. +10 XP.' }) },
+      { id: 'race', text: 'Run for it', stat: 'CON', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 20 }, 10), text: 'You sprint and keep your footing. +20 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 10), text: 'You run at the wrong moment. The wind slams you into the rail. -3 HP.' }) },
     ]
   ),
 
@@ -795,9 +798,9 @@ const SCENES: Record<string, Scene> = {
     'Bramdur Gate',
     'A dwarven pressure door blocks the corridor—stone fused to bronze. A warning is carved in clean, readable runes: “DO NOT REMOVE THE PIN.” The pin is missing.',
     [
-      { id: 'solve', text: 'Work the mechanism', stat: 'INT', dc: 14, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 4 }, 'starfall_gate_open'), 14), text: 'You seat the gears by hand and bleed off pressure. The door unlocks with a low sigh. +4 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'The mechanism bites back. Hot metal kisses your palm. -2 HP.' }) },
-      { id: 'force', text: 'Force it', stat: 'STR', dc: 15, onSuccess: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp), xp: ch.xp + 3 }, 12), text: 'You wrench the door enough to slip through. Your shoulder pays for it. -1 HP, +3 XP.' }), onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'rival', onWin: { text: 'You drive them back and take the corridor.', logs: ['Combat won: Bramdor Gate'] }, onLose: { text: 'You are forced away from the door.', logs: ['Combat lost: Bramdor Gate'] }, onFlee: { text: 'You retreat into side tunnels.', logs: ['Fled: Bramdor Gate'] } }) as any } }, 'starfall_gate_fight'), 10), text: 'Your noise brings black-robed figures from the dark.' }) },
-      { id: 'mark', text: 'Mark it and move on', stat: 'WIS', dc: 11, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You memorize the layout and move before you waste time. +1 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You lose your place in the tunnels and circle back. +1 XP.' }) },
+      { id: 'solve', text: 'Work the mechanism', stat: 'INT', dc: 14, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 40 }, 'starfall_gate_open'), 14), text: 'You seat the gears by hand and bleed off pressure. The door unlocks with a low sigh. +40 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'The mechanism bites back. Hot metal kisses your palm. -2 HP.' }) },
+      { id: 'force', text: 'Force it', stat: 'STR', dc: 15, onSuccess: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp), xp: ch.xp + 30 }, 12), text: 'You wrench the door enough to slip through. Your shoulder pays for it. -1 HP, +30 XP.' }), onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'rival', onWin: { text: 'You drive them back and take the corridor.', logs: ['Combat won: Bramdor Gate'] }, onLose: { text: 'You are forced away from the door.', logs: ['Combat lost: Bramdor Gate'] }, onFlee: { text: 'You retreat into side tunnels.', logs: ['Fled: Bramdor Gate'] } }) as any } }, 'starfall_gate_fight'), 10), text: 'Your noise brings black-robed figures from the dark.' }) },
+      { id: 'mark', text: 'Mark it and move on', stat: 'WIS', dc: 11, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'You memorize the layout and move before you waste time. +10 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'You lose your place in the tunnels and circle back. +10 XP.' }) },
     ]
   ),
 
@@ -807,9 +810,9 @@ const SCENES: Record<string, Scene> = {
     'Korrin Lift',
     'A vertical lift shaft drops into darkness. The platform is chained, counterweighted, and jammed. Dwarven maker-marks cover the crank housing.',
     [
-      { id: 'repair', text: 'Unjam the lift', stat: 'INT', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You clear grit and reset the governor. The platform descends smoothly. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'The crank snaps your knuckles. -1 HP.' }) },
-      { id: 'climb', text: 'Climb the chains', stat: 'DEX', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You climb hand over hand, slow and steady. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 10), text: 'A chain link shifts. You drop hard onto the platform. -3 HP.' }) },
-      { id: 'drop', text: 'Drop the counterweight (fast)', stat: 'STR', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You release it cleanly. The platform falls, controlled—barely. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'The platform lurches and slams. Your teeth click together. -2 HP.' }) },
+      { id: 'repair', text: 'Unjam the lift', stat: 'INT', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 30 }, 12), text: 'You clear grit and reset the governor. The platform descends smoothly. +30 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'The crank snaps your knuckles. -1 HP.' }) },
+      { id: 'climb', text: 'Climb the chains', stat: 'DEX', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 30 }, 12), text: 'You climb hand over hand, slow and steady. +30 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 10), text: 'A chain link shifts. You drop hard onto the platform. -3 HP.' }) },
+      { id: 'drop', text: 'Drop the counterweight (fast)', stat: 'STR', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 20 }, 10), text: 'You release it cleanly. The platform falls, controlled—barely. +20 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'The platform lurches and slams. Your teeth click together. -2 HP.' }) },
     ]
   ),
 
@@ -820,8 +823,8 @@ const SCENES: Record<string, Scene> = {
     'A stone chamber holds a ring of dwarven bells tuned to different pitches. A bronze lens rests in a cradle, etched with fine lines like a map. The air here vibrates even when no one moves.',
     [
       { id: 'align', text: 'Align the tones', stat: 'WIS', dc: 14, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, inventory: [...ch.inventory, 'Harmonic Lens'] }, 'starfall_lens'), 14), text: 'You strike the bells in the right order. The lens warms and settles into your hand. It is meant to be carried.', logs: ['Item acquired: Harmonic Lens'] }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'You choose the wrong tone. The chamber answers with a pressure wave. -2 HP.' }) },
-      { id: 'study', text: 'Study the etchings', stat: 'INT', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'The lines are not decoration. They show how the engine routes force through the mountain. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You learn enough to know this place was built by engineers, not priests. +1 XP.' }) },
-      { id: 'leave', text: 'Leave quietly', stat: 'DEX', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You leave without disturbing the chamber. +1 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'A bell rings once as you pass. You keep going. +1 XP.' }) },
+      { id: 'study', text: 'Study the etchings', stat: 'INT', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 30 }, 12), text: 'The lines are not decoration. They show how the engine routes force through the mountain. +30 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'You learn enough to know this place was built by engineers, not priests. +10 XP.' }) },
+      { id: 'leave', text: 'Leave quietly', stat: 'DEX', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'You leave without disturbing the chamber. +10 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'A bell rings once as you pass. You keep going. +10 XP.' }) },
     ]
   ),
 
@@ -831,9 +834,9 @@ const SCENES: Record<string, Scene> = {
     'Craterwood',
     'The forest near the crater grows at angles that don’t look natural. Stones sit half an inch above the ground as if they forgot how weight works. Your hair lifts with static when you step near the rim.',
     [
-      { id: 'track', text: 'Follow the strange tracks', stat: 'WIS', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You find bootprints that stop, then resume ten feet away. Someone has been jumping the weak spots.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'A patch of ground shifts under you. Your stomach lurches as gravity changes. -2 HP.' }) },
-      { id: 'sample', text: 'Take a shard of crater-stone', stat: 'INT', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'The stone is cold and heavy. It pulls at the light around it. +2 XP.', logs: ['Clue: crater-stone distorts light'] }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 8), text: 'The shard slips and cuts your palm. -1 HP.' }) },
-      { id: 'avoid', text: 'Avoid the crater rim', stat: 'DEX', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You keep to stable ground and lose less time than you fear. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You detour wider than you meant to. +1 XP.' }) },
+      { id: 'track', text: 'Follow the strange tracks', stat: 'WIS', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 30 }, 12), text: 'You find bootprints that stop, then resume ten feet away. Someone has been jumping the weak spots. +30 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'A patch of ground shifts under you. Your stomach lurches as gravity changes. -2 HP.' }) },
+      { id: 'sample', text: 'Take a shard of crater-stone', stat: 'INT', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 20 }, 10), text: 'The stone is cold and heavy. It pulls at the light around it. +20 XP.', logs: ['Clue: crater-stone distorts light'] }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 8), text: 'The shard slips and cuts your palm. -1 HP.' }) },
+      { id: 'avoid', text: 'Avoid the crater rim', stat: 'DEX', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 20 }, 10), text: 'You keep to stable ground and lose less time than you fear. +20 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'You detour wider than you meant to. +10 XP.' }) },
     ]
   ),
 
@@ -844,7 +847,7 @@ const SCENES: Record<string, Scene> = {
     'A dwarven vault door sits in the rock with no handle—only a recessed seal and three grooves worn by use. The air here feels heavier, steadier. Like the mountain remembers how to hold itself.',
     [
       { id: 'open', text: 'Open the vault', stat: 'INT', dc: 14, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, inventory: [...ch.inventory, 'Anchor Seal'] }, 'starfall_anchor'), 16), text: 'The seal releases with a click. Inside rests the Anchor Seal, warm and dense as forged truth.', logs: ['Item acquired: Anchor Seal'] }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'A pressure vent hisses. Heat burns your forearm. -2 HP.' }) },
-      { id: 'listen', text: 'Listen for guards', stat: 'WIS', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You hear quiet voices beyond the stone—The Black Choir is close.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'Only your own breath answers you. +1 XP.' }) },
+      { id: 'listen', text: 'Listen for guards', stat: 'WIS', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 20 }, 10), text: 'You hear quiet voices beyond the stone—The Black Choir is close. +20 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'Only your own breath answers you. +10 XP.' }) },
       { id: 'rush', text: 'Take it fast', stat: 'DEX', dc: 14, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, inventory: [...ch.inventory, 'Anchor Seal'] }, 'starfall_anchor'), 14), text: 'You take the seal and leave before anyone can close the corridor behind you.', logs: ['Item acquired: Anchor Seal'] }), onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'rival', onWin: { text: 'You hold the corridor long enough to escape with the seal.', logs: ['Combat won: Anchor Vault'] }, onLose: { text: 'They beat you back from the vault.', logs: ['Combat lost: Anchor Vault'] }, onFlee: { text: 'You flee into the side works, seal in hand.', logs: ['Fled: Anchor Vault'] } }) as any } }, 'starfall_anchor_fight'), 12), text: 'Boots on stone. Black robes in lantern light.' }) },
     ]
   ),
@@ -855,9 +858,9 @@ const SCENES: Record<string, Scene> = {
     'Sabotage',
     'A section of dwarven works has been wrecked on purpose. A support pin lies on the floor beside fresh footprints. Someone removed what the runes said not to remove.',
     [
-      { id: 'repair', text: 'Re-seat the pin and stabilize the works', stat: 'INT', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 4 }, 14), text: 'You wedge the pin back into place and brace the beam. The tunnel stops complaining. +4 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'Stone shifts. Dust floods your lungs. -2 HP.' }) },
-      { id: 'hunt', text: 'Follow the footprints', stat: 'WIS', dc: 13, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch }, 'starfall_choir_seen'), 12), text: 'You catch sight of them: black robes, disciplined spacing, moving uphill toward the rift.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'The prints vanish in rubble. They are still ahead of you. +1 XP.' }) },
-      { id: 'push', text: 'Push onward', stat: 'CON', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You keep moving. The air grows hotter. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 8), text: 'You push through dust and scrape your knee on stone. -1 HP.' }) },
+      { id: 'repair', text: 'Re-seat the pin and stabilize the works', stat: 'INT', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 40 }, 14), text: 'You wedge the pin back into place and brace the beam. The tunnel stops complaining. +40 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'Stone shifts. Dust floods your lungs. -2 HP.' }) },
+      { id: 'hunt', text: 'Follow the footprints', stat: 'WIS', dc: 13, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 20 }, 'starfall_choir_seen'), 12), text: 'You catch sight of them: black robes, disciplined spacing, moving uphill toward the rift. +20 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'The prints vanish in rubble. They are still ahead of you. +10 XP.' }) },
+      { id: 'push', text: 'Push onward', stat: 'CON', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 20 }, 10), text: 'You keep moving. The air grows hotter. +20 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 8), text: 'You push through dust and scrape your knee on stone. -1 HP.' }) },
     ]
   ),
 
@@ -867,9 +870,9 @@ const SCENES: Record<string, Scene> = {
     'Rift Mouth',
     'The rift is a crack down into heat and copper air. Far below, a steady hum rises through the stone. The comet’s red light seems to lean toward the opening.',
     [
-      { id: 'descend', text: 'Descend into the rift', stat: 'DEX', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You climb down with careful hands. The stone is warm enough to sting. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 10), text: 'You slip and slam into the wall. -3 HP.' }) },
-      { id: 'plan', text: 'Check your gear and plan the approach', stat: 'INT', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You choose a route through the broken catwalks. It will work if nothing changes. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You lose time arguing with the map in your head. +1 XP.' }) },
-      { id: 'listen', text: 'Listen for chanting', stat: 'WIS', dc: 12, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch }, 'starfall_chant'), 10), text: 'You hear it: voices keeping time with the engine’s hum. The Choir is already inside.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'Only the engine answers you. +1 XP.' }) },
+      { id: 'descend', text: 'Descend into the rift', stat: 'DEX', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 30 }, 12), text: 'You climb down with careful hands. The stone is warm enough to sting. +30 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 10), text: 'You slip and slam into the wall. -3 HP.' }) },
+      { id: 'plan', text: 'Check your gear and plan the approach', stat: 'INT', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 20 }, 10), text: 'You choose a route through the broken catwalks. It will work if nothing changes. +20 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'You lose time arguing with the map in your head. +10 XP.' }) },
+      { id: 'listen', text: 'Listen for chanting', stat: 'WIS', dc: 12, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 20 }, 'starfall_chant'), 10), text: 'You hear it: voices keeping time with the engine’s hum. The Choir is already inside. +20 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'Only the engine answers you. +10 XP.' }) },
     ]
   ),
 
@@ -879,10 +882,10 @@ const SCENES: Record<string, Scene> = {
     'The Engine Heart',
     'The Star-Fall Engine fills a chamber the size of a chapel—bronze rings, stone columns, and runes cut like instructions. The Black Choir stands in a wide circle, chanting in measured breaths.\n\nThree sockets wait at the central console.',
     [
-      { id: 'keys', text: 'Set the keys and stabilize the engine', stat: 'INT', dc: 15, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10, gold: ch.gold + 12 }, 24), text: 'You fit the pieces where they belong and turn the sequence back into safety. The hum steadies. The comet holds. +12 gold, +10 XP.', logs: ['Campaign complete: Star-Fall Engine'] }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 4, 0, ch.maxHp) }, 14), text: 'The console kicks back with heat and force. The chamber tilts for a heartbeat. -4 HP.' }) },
+      { id: 'keys', text: 'Set the keys and stabilize the engine', stat: 'INT', dc: 15, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 100, gold: ch.gold + 12 }, 24), text: 'You fit the pieces where they belong and turn the sequence back into safety. The hum steadies. The comet holds. +12 gold, +100 XP.', logs: ['Campaign complete: Star-Fall Engine'] }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 4, 0, ch.maxHp) }, 14), text: 'The console kicks back with heat and force. The chamber tilts for a heartbeat. -4 HP.' }) },
       { id: 'break', text: 'Break the Choir’s circle', stat: 'STR', dc: 13, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'rival', onWin: { text: 'You break their line and buy the engine time to recover.', logs: ['Combat won: Engine Heart'] }, onLose: { text: 'They drag you down as the chant continues.', logs: ['Combat lost: Engine Heart'] }, onFlee: { text: 'You escape the circle and regroup behind the console.', logs: ['Fled: Engine Heart'] } }) as any } }, 'starfall_final_fight'), 14), text: 'You step into the circle and meet steel with steel.' }),
         onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'A blade finds you in the crush. -2 HP.' }) },
-      { id: 'counter', text: 'Speak the counter-words carved into the stone', stat: 'WIS', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 6 }, 14), text: 'You match their rhythm with older words. The chanting falters. The engine’s hum deepens. +6 XP.' }),
+      { id: 'counter', text: 'Speak the counter-words carved into the stone', stat: 'WIS', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 60 }, 14), text: 'You match their rhythm with older words. The chanting falters. The engine’s hum deepens. +60 XP.' }),
         onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 12), text: 'Your voice breaks in the heat. The pressure answers. -3 HP.' }) },
     ]
   ),
@@ -893,9 +896,9 @@ const SCENES: Record<string, Scene> = {
     'A Sky That Holds',
     'Dawn comes thin and pale over Skybreak. The comet is still there, but it no longer feels like it is falling. The mountain’s tremors ease into silence.',
     [
-      { id: 'return', text: 'Return to the Watch', stat: 'CHA', dc: 11, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 10), text: 'Captain Pike listens, then nods once. “Good,” he says. “Now go sleep.” +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'The Watch believes results more than stories. You still brought results. +1 XP.' }) },
-      { id: 'leave', text: 'Leave before anyone turns you into a legend', stat: 'WIS', dc: 11, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You leave the mountain behind you. The road feels ordinary again. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You take one last look at the sky, then go. +1 XP.' }) },
-      { id: 'study', text: 'Speak with Ilyra and record what you learned', stat: 'INT', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'Ilyra writes without stopping. “This changes everything,” she says quietly. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'The notes are incomplete, but the warning is recorded. +1 XP.' }) },
+      { id: 'return', text: 'Return to the Watch', stat: 'CHA', dc: 11, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 30 }, 10), text: 'Captain Pike listens, then nods once. “Good,” he says. “Now go sleep.” +30 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'The Watch believes results more than stories. You still brought results. +10 XP.' }) },
+      { id: 'leave', text: 'Leave before anyone turns you into a legend', stat: 'WIS', dc: 11, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 20 }, 10), text: 'You leave the mountain behind you. The road feels ordinary again. +20 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'You take one last look at the sky, then go. +10 XP.' }) },
+      { id: 'study', text: 'Speak with Ilyra and record what you learned', stat: 'INT', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 30 }, 12), text: 'Ilyra writes without stopping. “This changes everything,” she says quietly. +30 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10 }, 8), text: 'The notes are incomplete, but the warning is recorded. +10 XP.' }) },
     ]
   ),
 
