@@ -51,10 +51,20 @@ export function applyRaceBonuses(stats: Stats, race: RaceName): { stats: Stats; 
       add('CHA', 1)
       note = '+2 DEX, +1 CHA'
       break
-    case 'Orc':
+    case 'Half-Elf':
+      add('CHA', 2)
+      add('DEX', 1)
+      note = '+2 CHA, +1 DEX'
+      break
+    case 'Half-Orc':
       add('STR', 2)
       add('CON', 1)
       note = '+2 STR, +1 CON'
+      break
+    case 'Gnome':
+      add('INT', 2)
+      add('DEX', 1)
+      note = '+2 INT, +1 DEX'
       break
     case 'Tiefling':
       add('CHA', 2)

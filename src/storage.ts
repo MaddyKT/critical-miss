@@ -45,6 +45,9 @@ function normalizeV4(save: SaveFile): SaveFile {
 
   // Backfill fields (now required)
   if (typeof c.race !== 'string') c.race = 'Human'
+  // Normalize/upgrade legacy race values.
+  if (c.race === 'Orc') c.race = 'Half-Orc'
+  if (!['Human', 'Elf', 'Dwarf', 'Halfling', 'Half-Elf', 'Half-Orc', 'Gnome', 'Tiefling'].includes(c.race)) c.race = 'Human'
 
   // arrays
   if (!Array.isArray(c.inventory)) c.inventory = []

@@ -2,7 +2,7 @@ export type ClassName = 'Rogue' | 'Wizard' | 'Barbarian' | 'Fighter' | 'Paladin'
 
 export type Sex = 'Male' | 'Female'
 
-export type RaceName = 'Human' | 'Elf' | 'Dwarf' | 'Halfling' | 'Orc' | 'Tiefling'
+export type RaceName = 'Human' | 'Elf' | 'Dwarf' | 'Halfling' | 'Half-Elf' | 'Half-Orc' | 'Gnome' | 'Tiefling'
 
 export type Stats = {
   STR: number

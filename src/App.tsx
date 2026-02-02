@@ -10,7 +10,7 @@ import { enemyTurn, playerAttack, playerGuard, playerRun, cantripForClass, spell
 import { longRest, shortRest } from './rest'
 import { DiceModal } from './dice/DiceModal'
 
-const RACES: RaceName[] = ['Human', 'Elf', 'Dwarf', 'Halfling', 'Orc', 'Tiefling']
+const RACES: RaceName[] = ['Human', 'Elf', 'Dwarf', 'Halfling', 'Half-Elf', 'Half-Orc', 'Gnome', 'Tiefling']
 const CLASSES: ClassName[] = ['Rogue', 'Wizard', 'Barbarian', 'Fighter', 'Paladin', 'Druid']
 const ALIGNMENTS: Array<'Good' | 'Neutral' | 'Evil'> = ['Good', 'Neutral', 'Evil']
 
