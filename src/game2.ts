@@ -2,9 +2,44 @@ import type { CampaignArcId, CampaignState, Character, GameLogEntry, Scene, Scen
 import { clamp, d20, modFromStat, pick, uid } from './utils'
 import { startCombat } from './combat'
 
-const NAME_FIRST_F: string[] = ['Astra', 'Lilith', 'Morgana', 'Nyx', 'Seraphine', 'Vera', 'Tess', 'Rowan']
-const NAME_FIRST_M: string[] = ['Bromley', 'Thorn', 'Garrick', 'Roland', 'Osric', 'Dorian', 'Milo', 'Cedric']
-const NAME_LAST: string[] = ['Underfoot', 'Tax-Evasion', 'McSidequest', 'the Uninsured', 'von Bad Idea', 'of Regret', 'Two-Swords', 'Half-Plan']
+const NAME_FIRST_F: string[] = [
+  'Aelira',
+  'Brina',
+  'Carys',
+  'Elowen',
+  'Isolde',
+  'Liora',
+  'Mara',
+  'Rowena',
+  'Seren',
+  'Tamsin',
+]
+
+const NAME_FIRST_M: string[] = [
+  'Alaric',
+  'Bram',
+  'Cedric',
+  'Dorian',
+  'Garrick',
+  'Lucan',
+  'Rowan',
+  'Thane',
+  'Wulfric',
+  'Ronan',
+]
+
+const NAME_LAST: string[] = [
+  'Ashford',
+  'Blackwood',
+  'Brightwater',
+  'Duskryn',
+  'Everwinter',
+  'Frostmere',
+  'Hollowmere',
+  'Ironwood',
+  'Ravenscar',
+  'Stonebrook',
+]
 
 function d6() {
   return 1 + Math.floor(Math.random() * 6)
@@ -192,7 +227,9 @@ export function makeNewCharacter(input: {
 }
 
 export function randomName(sex: Character['sex']) {
-  const first = sex === 'Female' ? pick(NAME_FIRST_F) : pick(NAME_FIRST_M)
+  // Keep name choice correlated to the selected sex to match player expectations.
+  const firstPool = sex === 'Female' ? NAME_FIRST_F : NAME_FIRST_M
+  const first = pick(firstPool)
   const last = pick(NAME_LAST)
   return `${first} ${last}`
 }
