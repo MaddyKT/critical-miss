@@ -1,6 +1,5 @@
 import type { CampaignArcId, CampaignState, Character, GameLogEntry, Scene, SceneChoice, PendingRoll, Stats } from './types'
 import { clamp, d20, modFromStat, pick, uid } from './utils'
-import { mimicFinaleScene } from './game2.mimicFinale'
 import { startCombat } from './combat'
 
 const NAME_FIRST_F: string[] = ['Astra', 'Lilith', 'Morgana', 'Nyx', 'Seraphine', 'Vera', 'Tess', 'Rowan']
@@ -175,13 +174,7 @@ export function nextTurnScene(c: Character): Scene {
   // Hard rule: do not repeat scenes within an arc.
   const seen = new Set(c.campaign.seenSceneIds ?? [])
 
-  // Arc-specific one-shot gating.
-  const gated0 = pool0.filter((x) => {
-    if (x.id === 'camp.mimic_followup' && (c.campaign.flags.mimic_followup_done || c.campaign.flags.mimic_sent_away)) return false
-    return true
-  })
-
-  const unseen = gated0.filter((x) => !seen.has(x.id))
+  const unseen = pool0.filter((x) => !seen.has(x.id))
 
   // If we run out of authored scenes for this act, generate a unique "travel" scene
   // so the arc can continue without repeats.
@@ -309,15 +302,11 @@ function advanceArc(c: Character, delta: number): Character {
 }
 
 function newCampaign(): CampaignState {
-  // Weight toward big fantasy adventure arcs.
+  // Only the new big fantasy adventure arcs for now.
   const arcId = weightedPick([
-    { id: 'princess', weight: 4 },
-    { id: 'plague', weight: 4 },
-    { id: 'catastrophe', weight: 4 },
-    { id: 'treasure', weight: 2 },
-    { id: 'vengeance', weight: 2 },
-    { id: 'internship', weight: 1 },
-    { id: 'mimic', weight: 1 },
+    { id: 'princess', weight: 1 },
+    { id: 'plague', weight: 1 },
+    { id: 'catastrophe', weight: 1 },
   ] as any)
   return { arcId: arcId as CampaignArcId, act: 1, progress: 0, flags: {}, seenSceneIds: [] }
 }
@@ -334,24 +323,6 @@ const ARC_META: Record<CampaignArcId, { title: string; blurb: string }> = {
   catastrophe: {
     title: 'The Skybreak Omen',
     blurb: 'The mountain groans. The sky burns at night. Something ancient is waking.',
-  },
-
-  treasure: {
-    title: 'The Map That Shouldn’t Exist',
-    blurb: 'A map falls into your hands, and suddenly everyone wants you dead.',
-  },
-  vengeance: {
-    title: 'Black Letter',
-    blurb: 'A letter brings bad news. Your grief becomes a direction.',
-  },
-
-  internship: {
-    title: 'Unpaid, Unholy Internship',
-    blurb: 'A wizard has offered you “experience.” You will pay in suffering.',
-  },
-  mimic: {
-    title: 'Chest With Feelings',
-    blurb: 'A mimic has chosen you. That is not a compliment.',
   },
 }
 
@@ -406,85 +377,12 @@ const ARC_SCENE_POOLS: Record<CampaignArcId, Record<1 | 2 | 3, Array<{ id: strin
       { id: 'skybreak.aftermath', weight: 2 },
     ],
   },
-
-  treasure: {
-    1: [
-      { id: 'tavern.rumor_black_road', weight: 4 },
-      { id: 'street.map_drop', weight: 3 },
-      { id: 'road.first_blood', weight: 2 },
-    ],
-    2: [
-      { id: 'road.rival_party', weight: 3 },
-      { id: 'road.bridge_toll', weight: 2 },
-      { id: 'ruins.stone_gate', weight: 3 },
-      { id: 'road.first_blood', weight: 1 },
-    ],
-    3: [
-      { id: 'vault.lantern_room', weight: 3 },
-      { id: 'vault.final_lock', weight: 3 },
-    ],
-  },
-
-  vengeance: {
-    1: [
-      { id: 'letter.black_seal', weight: 4 },
-      { id: 'village.funeral', weight: 2 },
-      { id: 'road.witness', weight: 2 },
-    ],
-    2: [
-      { id: 'road.witness', weight: 2 },
-      { id: 'road.hired_blade', weight: 3 },
-      { id: 'manor.closed_doors', weight: 3 },
-    ],
-    3: [
-      { id: 'manor.confrontation', weight: 4 },
-      { id: 'manor.aftermath', weight: 2 },
-    ],
-  },
-
-  internship: {
-    1: [
-      { id: 'tower.internship', weight: 5 },
-      { id: 'lab.safety', weight: 2 },
-      { id: 'tavern.dripping_goblet', weight: 1 },
-    ],
-    2: [
-      { id: 'lab.safety', weight: 5 },
-      { id: 'fallout.jar', weight: 3 },
-      { id: 'tavern.dripping_goblet', weight: 1 },
-    ],
-    3: [
-      { id: 'fallout.jar', weight: 6 },
-      { id: 'tavern.dripping_goblet', weight: 1 },
-    ],
-  },
-
-  mimic: {
-    1: [
-      { id: 'dungeon.mimic_intro', weight: 5 },
-      { id: 'tavern.dripping_goblet', weight: 1 },
-    ],
-    2: [
-      { id: 'dungeon.mimic_intro', weight: 3 },
-      { id: 'tavern.dripping_goblet', weight: 1 },
-    ],
-    3: [
-      { id: 'camp.mimic_finale', weight: 6 },
-      { id: 'tavern.dripping_goblet', weight: 1 },
-    ],
-  },
 }
 
 const ARC_FINALES: Record<CampaignArcId, string> = {
   princess: 'keep.tower_rescue',
   plague: 'temple.cure_ritual',
   catastrophe: 'skybreak.finale',
-
-  treasure: 'vault.final_lock',
-  vengeance: 'manor.confrontation',
-
-  internship: 'fallout.jar',
-  mimic: 'camp.mimic_finale',
 }
 
 function scene(id: string, category: string, title: string, body: string, choices: SceneChoice[]): Scene {
@@ -493,7 +391,7 @@ function scene(id: string, category: string, title: string, body: string, choice
 
 function getSceneById(id: string): Scene {
   const s = SCENES[id]
-  if (!s) return SCENES['tavern.dripping_goblet']
+  if (!s) return SCENES['court.missing_princess']
   return s
 }
 
@@ -563,62 +461,7 @@ function makeFillerScene(c: Character): Scene {
 }
 
 const SCENES: Record<string, Scene> = {
-  // Finale scenes are defined separately to keep the main file readable.
-  'camp.mimic_finale': mimicFinaleScene({ setArcFlag, advanceArc }),
-
-  'tavern.dripping_goblet': scene(
-    'tavern.dripping_goblet',
-    'Tavern',
-    'The Dripping Goblet',
-    'The air smells like stew and bad decisions. Someone is eying you suspiciously.',
-    [
-      {
-        id: 'rumors',
-        text: 'Ask the barkeep for rumors',
-        stat: 'CHA',
-        dc: 12,
-        onSuccess: (ch) => ({
-          c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 4 }, 'heard_rumor'), 10),
-          text: 'The barkeep leans in and shares a rumor about a map that leads to a lantern-lit vault in the Black Road ruins. +4 XP.',
-          logs: ['Quest hook: The Map That Shouldn’t Exist'],
-        }),
-        onFail: (ch) => ({ c: { ...ch, gold: clamp(ch.gold - 2, 0, 999999) }, text: 'The barkeep charges you for “information” and gives you a weather report. -2 gold.' }),
-      },
-      {
-        id: 'suspicious',
-        text: 'Approach the suspicious stranger',
-        stat: 'WIS',
-        dc: 13,
-        onSuccess: (ch) => ({ c: { ...ch, xp: ch.xp + 5 }, text: 'You defuse the tension with alarming competence. The stranger offers a lead. +5 XP.' }),
-        onFail: (ch) => ({
-          c: {
-            ...ch,
-            // start a combat via a hidden flag read by the UI
-            flags: {
-              ...ch.flags,
-              __startCombat: startCombat({
-                c: ch,
-                enemyKind: 'thug',
-                onWin: { text: 'The thug collapses and the tavern pretends it didn’t see. You keep your pride.', logs: ['Combat won: Tavern brawl'] },
-                onLose: { text: 'You go down hard. Someone steps on your hand “by accident.”', logs: ['Combat lost: Tavern brawl'] },
-                onFlee: { text: 'You slip out into the night with your dignity mostly intact.', logs: ['Fled: Tavern brawl'] },
-              }) as any,
-            },
-          },
-          text: 'You say the wrong thing. The stranger stands. Chairs scrape. Someone reaches for a bottle.',
-          logs: ['Combat triggered: Tavern brawl'],
-        }),
-      },
-      {
-        id: 'flirt',
-        text: 'Flirt with the barmaid',
-        stat: 'CHA',
-        dc: 14,
-        onSuccess: (ch) => ({ c: { ...ch, gold: ch.gold + 3 }, text: 'It works. You receive a free drink and a dangerous smile. +3 gold.' }),
-        onFail: (ch) => ({ c: { ...ch, xp: ch.xp + 1 }, text: 'It does not work. You learn something about rejection. +1 XP.' }),
-      },
-    ]
-  ),
+  // Only the new adventure arcs are active right now.
 
   // ARC — Treasure
   'tavern.rumor_black_road': scene(

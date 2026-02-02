@@ -11,14 +11,7 @@ export type Stats = {
   CHA: number
 }
 
-export type CampaignArcId =
-  | 'internship'
-  | 'mimic'
-  | 'treasure'
-  | 'vengeance'
-  | 'princess'
-  | 'plague'
-  | 'catastrophe'
+export type CampaignArcId = 'princess' | 'plague' | 'catastrophe'
 
 export type CampaignState = {
   arcId: CampaignArcId
