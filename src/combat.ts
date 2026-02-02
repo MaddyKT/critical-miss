@@ -18,15 +18,19 @@ export function weaponForClass(className: Character['className']): { name: strin
   }
 }
 
-export function cantripForClass(className: Character['className']): { name: string; stat: StatKey; dice: number; sides: 4 | 6 | 8 | 10 | 12 } | null {
-  if (className === 'Wizard') return { name: 'Firebolt', stat: 'INT', dice: 1, sides: 10 }
-  if (className === 'Druid') return { name: 'Thorn Whip', stat: 'WIS', dice: 1, sides: 6 }
+export function cantripFor(c: Character): { name: string; stat: StatKey; dice: number; sides: 4 | 6 | 8 | 10 | 12 } | null {
+  // D&D-ish scaling: cantrips increase at 5/11/17
+  const tier = c.level >= 17 ? 4 : c.level >= 11 ? 3 : c.level >= 5 ? 2 : 1
+
+  if (c.className === 'Wizard') return { name: 'Firebolt', stat: 'INT', dice: tier, sides: 10 }
+  if (c.className === 'Druid') return { name: 'Thorn Whip', stat: 'WIS', dice: tier, sides: 6 }
   return null
 }
 
-export function spellForClass(className: Character['className']): { name: string; stat: StatKey; dice: number; sides: 4 | 6 | 8 | 10 | 12 } | null {
-  if (className === 'Wizard') return { name: 'Magic Missile', stat: 'INT', dice: 3, sides: 4 }
-  if (className === 'Druid') return { name: 'Moonbeam', stat: 'WIS', dice: 2, sides: 6 }
+export function spellFor(c: Character): { name: string; stat: StatKey; dice: number; sides: 4 | 6 | 8 | 10 | 12 } | null {
+  // Spells stay fixed in this MVP; more slots come from leveling.
+  if (c.className === 'Wizard') return { name: 'Magic Missile', stat: 'INT', dice: 3, sides: 4 }
+  if (c.className === 'Druid') return { name: 'Moonbeam', stat: 'WIS', dice: 2, sides: 6 }
   return null
 }
 
@@ -88,8 +92,8 @@ export function playerAttack(c: Character, combat: CombatState, kind: 'weapon' |
   let c2: Character = { ...c }
 
   const weapon = weaponForClass(c2.className)
-  const cantrip = cantripForClass(c2.className)
-  const spell = spellForClass(c2.className)
+  const cantrip = cantripFor(c2)
+  const spell = spellFor(c2)
 
   let name = weapon.name
   let stat: StatKey = weapon.stat
@@ -110,18 +114,45 @@ export function playerAttack(c: Character, combat: CombatState, kind: 'weapon' |
     dmg = { ...spell, name: spell.name }
   }
 
-  const toHit = d20() + modFromStat(c2.stats[stat])
   const enemyAc = enemy.ac + (enemy.intent.kind === 'defend' ? enemy.intent.acBonus : 0)
-  const hit = toHit !== 1 && toHit >= enemyAc
 
-  if (hit) {
-    const amount = rollDamage(dmg.dice, dmg.sides, modFromStat(c2.stats[stat]))
-    enemy.hp = clamp(enemy.hp - amount, 0, enemy.maxHp)
-    const nextCombat: CombatState = { ...combat, enemy, guard: false }
-    return { c: c2, combat: nextCombat, text: `You use ${name}. Hit! (-${amount} HP)` }
+  const doOneAttack = () => {
+    const toHit = d20() + modFromStat(c2.stats[stat])
+    const hit = toHit !== 1 && toHit >= enemyAc
+    if (!hit) return { hit: false, dmg: 0 }
+
+    let amount = rollDamage(dmg.dice, dmg.sides, modFromStat(c2.stats[stat]))
+
+    // Rogue Sneak Attack (very simplified): extra dice on weapon hits from level 3+.
+    if (kind === 'weapon' && c2.className === 'Rogue' && c2.level >= 3) {
+      const sneakDice = c2.level >= 9 ? 3 : c2.level >= 5 ? 2 : 1
+      amount += rollDamage(sneakDice, 6, 0)
+    }
+
+    return { hit: true, dmg: amount }
   }
 
-  return { c: c2, combat: { ...combat, enemy, guard: false }, text: `You use ${name}. Miss.` }
+  const extraAttack = kind === 'weapon' && c2.level >= 5 && (c2.className === 'Fighter' || c2.className === 'Paladin' || c2.className === 'Barbarian')
+
+  const a1 = doOneAttack()
+  if (a1.hit) enemy.hp = clamp(enemy.hp - a1.dmg, 0, enemy.maxHp)
+
+  let a2 = { hit: false, dmg: 0 }
+  if (extraAttack && enemy.hp > 0) {
+    a2 = doOneAttack()
+    if (a2.hit) enemy.hp = clamp(enemy.hp - a2.dmg, 0, enemy.maxHp)
+  }
+
+  const nextCombat: CombatState = { ...combat, enemy, guard: false }
+
+  const hits = [a1.hit, a2.hit].filter(Boolean).length
+  const totalDmg = a1.dmg + a2.dmg
+  if (hits > 0) {
+    const suffix = extraAttack ? ` (${hits} hits)` : ''
+    return { c: c2, combat: nextCombat, text: `You use ${name}. Hit! (-${totalDmg} HP)${suffix}` }
+  }
+
+  return { c: c2, combat: nextCombat, text: `You use ${name}. Miss.` }
 }
 
 export function playerGuard(combat: CombatState) {

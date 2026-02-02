@@ -5,8 +5,8 @@ import { SCENARIO_PACKS, type ScenarioPack } from './scenarioPacks'
 import { clearSave, loadSave, saveGame } from './storage'
 import { clamp, modFromStat, pick, rollDie } from './utils'
 import { ModalCard } from './components/ModalCard'
-import { generateBackground, makeNewCharacter, nextTurnScene, resolveRoll, chooseToRoll, randomName, restartAdventure } from './game2'
-import { enemyTurn, playerAttack, playerGuard, playerRun, cantripForClass, spellForClass, weaponForClass } from './combat'
+import { generateBackground, makeNewCharacter, nextTurnScene, resolveRoll, chooseToRoll, randomName, restartAdventure, xpForLevel } from './game2'
+import { enemyTurn, playerAttack, playerGuard, playerRun, cantripFor, spellFor, weaponForClass } from './combat'
 import { longRest, shortRest } from './rest'
 import { DiceModal } from './dice/DiceModal'
 
@@ -332,17 +332,25 @@ export default function App() {
                 </div>
                 <div className="xpTrack" aria-label="XP bar">
                   {(() => {
-                    const perLevel = 20 + (character.level - 1) * 10
-                    const into = ((character.xp % perLevel) + perLevel) % perLevel
-                    const pct = Math.max(0, Math.min(100, (into / perLevel) * 100))
+                    const curStart = xpForLevel(character.level)
+                    const nextStart = character.level >= 20 ? curStart : xpForLevel(character.level + 1)
+                    const span = Math.max(1, nextStart - curStart)
+                    const into = Math.max(0, character.xp - curStart)
+                    const pct = Math.max(0, Math.min(100, (into / span) * 100))
                     return <div className="xpFill" style={{ width: `${pct}%` }} />
                   })()}
                 </div>
-                <div className="fine" style={{ opacity: 0.65 }}>Level {character.level} • Progress to next: {(() => {
-                  const perLevel = 20 + (character.level - 1) * 10
-                  const into = ((character.xp % perLevel) + perLevel) % perLevel
-                  return `${into}/${perLevel}`
-                })()}</div>
+                <div className="fine" style={{ opacity: 0.65 }}>
+                  Level {character.level}
+                  {' '}•{' '}
+                  {character.level >= 20
+                    ? 'Max level'
+                    : (() => {
+                        const curStart = xpForLevel(character.level)
+                        const nextStart = xpForLevel(character.level + 1)
+                        return `Progress to next: ${Math.max(0, character.xp - curStart)}/${Math.max(1, nextStart - curStart)}`
+                      })()}
+                </div>
               </div>
               <div className="bar">
                 <div className="barLabel">Gold</div>
@@ -515,7 +523,7 @@ export default function App() {
                     Attack ({weaponForClass(character.className).name})
                   </button>
 
-                  {cantripForClass(character.className) ? (
+                  {cantripFor(character) ? (
                     <button
                       className="cm_button"
                       onClick={() => {
@@ -542,11 +550,11 @@ export default function App() {
                         }))
                       }}
                     >
-                      Cantrip ({cantripForClass(character.className)!.name})
+                      Cantrip ({cantripFor(character)!.name})
                     </button>
                   ) : null}
 
-                  {spellForClass(character.className) ? (
+                  {spellFor(character) ? (
                     <button
                       className="cm_button"
                       onClick={() => {
@@ -577,7 +585,7 @@ export default function App() {
                         }))
                       }}
                     >
-                      Spell ({spellForClass(character.className)!.name}) • Slots {character.spellSlotsRemaining}
+                      Spell ({spellFor(character)!.name}) • Slots {character.spellSlotsRemaining}
                     </button>
                   ) : null}
 

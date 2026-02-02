@@ -162,6 +162,116 @@ export function generateStats(input: {
 
 export type StatGenMode = 'weighted' | 'chaos'
 
+// D&D 5e XP thresholds (levels 1..20). Index is level.
+const XP_FOR_LEVEL: number[] = [
+  0,
+  0, // level 1
+  300,
+  900,
+  2700,
+  6500,
+  14000,
+  23000,
+  34000,
+  48000,
+  64000,
+  85000,
+  100000,
+  120000,
+  140000,
+  165000,
+  195000,
+  225000,
+  265000,
+  305000,
+  355000, // level 20
+]
+
+export function xpForLevel(level: number) {
+  const l = Math.max(1, Math.min(20, Math.floor(level)))
+  return XP_FOR_LEVEL[l] ?? 0
+}
+
+export function levelFromXp(xp: number) {
+  const x = Math.max(0, Math.floor(xp))
+  let level = 1
+  for (let l = 20; l >= 1; l--) {
+    if (x >= (XP_FOR_LEVEL[l] ?? 0)) {
+      level = l
+      break
+    }
+  }
+  return level
+}
+
+export function spellSlotsMaxFor(className: Character['className'], level: number) {
+  // Very simplified "full caster" slot count.
+  // (DnD uses spell levels; we're just giving a pool.)
+  if (className !== 'Wizard' && className !== 'Druid') return 0
+  if (level <= 1) return 2
+  if (level <= 2) return 3
+  if (level <= 3) return 4
+  if (level <= 4) return 5
+  if (level <= 6) return 6
+  if (level <= 8) return 7
+  if (level <= 10) return 8
+  if (level <= 12) return 9
+  return 10
+}
+
+function hpGainOnLevelUp(hitDieSize: Character['hitDieSize'], conStat: number) {
+  // D&D average: d6->4, d8->5, d10->6, d12->7
+  const avg = hitDieSize === 6 ? 4 : hitDieSize === 8 ? 5 : hitDieSize === 10 ? 6 : 7
+  const gain = avg + modFromStat(conStat)
+  return Math.max(1, gain)
+}
+
+export function applyLeveling(c0: Character): { c: Character; logs: string[] } {
+  let c: Character = { ...c0 }
+  const logs: string[] = []
+
+  const targetLevel = levelFromXp(c.xp)
+  if (targetLevel <= c.level) {
+    // Still ensure spell slots match level.
+    const slots = spellSlotsMaxFor(c.className, c.level)
+    if (c.spellSlotsMax !== slots) {
+      const delta = slots - c.spellSlotsMax
+      c.spellSlotsMax = slots
+      c.spellSlotsRemaining = Math.max(0, c.spellSlotsRemaining + delta)
+    }
+    return { c, logs }
+  }
+
+  while (c.level < targetLevel && c.level < 20) {
+    const nextLevel = c.level + 1
+    const hpGain = hpGainOnLevelUp(c.hitDieSize, c.stats.CON)
+
+    c = {
+      ...c,
+      level: nextLevel,
+      maxHp: c.maxHp + hpGain,
+      hp: Math.min(c.maxHp + hpGain, c.hp + hpGain),
+    }
+
+    // Spell slots scale for casters.
+    const nextSlots = spellSlotsMaxFor(c.className, c.level)
+    if (c.spellSlotsMax !== nextSlots) {
+      const delta = nextSlots - c.spellSlotsMax
+      c.spellSlotsMax = nextSlots
+      c.spellSlotsRemaining = Math.max(0, c.spellSlotsRemaining + delta)
+    }
+
+    logs.push(`Level up! You reached level ${c.level}. (+${hpGain} max HP)`) 
+
+    // Class feature unlock callouts (combat code uses level for these).
+    if (c.level === 3 && c.className === 'Rogue') logs.push('New feature: Sneak Attack.')
+    if (c.level === 5 && (c.className === 'Fighter' || c.className === 'Paladin' || c.className === 'Barbarian')) logs.push('New feature: Extra Attack.')
+    if (c.level === 5 && (c.className === 'Wizard' || c.className === 'Druid')) logs.push('Your cantrips grow stronger.')
+  }
+
+  return { c, logs }
+}
+
 export function makeNewCharacter(input: {
   name?: string
   sex: Character['sex']
@@ -350,6 +460,11 @@ export function resolveRoll(
 
       entries.push(log(cNext.day, 'Combat triggered.'))
     }
+
+    // Apply leveling after any XP changes.
+    const leveled = applyLeveling(cNext)
+    cNext = leveled.c
+    for (const t of leveled.logs) entries.push(log(cNext.day, t))
 
     return cNext
   }
