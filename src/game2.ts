@@ -309,30 +309,33 @@ function advanceArc(c: Character, delta: number): Character {
 }
 
 function newCampaign(): CampaignState {
-  // Weight toward the new story-forward arcs.
+  // Weight toward big fantasy adventure arcs.
   const arcId = weightedPick([
-    { id: 'treasure', weight: 3 },
-    { id: 'vengeance', weight: 3 },
-    { id: 'taxman', weight: 2 },
-    { id: 'internship', weight: 2 },
+    { id: 'princess', weight: 4 },
+    { id: 'plague', weight: 4 },
+    { id: 'catastrophe', weight: 4 },
+    { id: 'treasure', weight: 2 },
+    { id: 'vengeance', weight: 2 },
+    { id: 'internship', weight: 1 },
     { id: 'mimic', weight: 1 },
   ] as any)
   return { arcId: arcId as CampaignArcId, act: 1, progress: 0, flags: {}, seenSceneIds: [] }
 }
 
 const ARC_META: Record<CampaignArcId, { title: string; blurb: string }> = {
-  taxman: {
-    title: 'The Crown vs. Your Vibes',
-    blurb: 'An auditor has taken an unholy interest in your finances.',
+  princess: {
+    title: 'The Stolen Heir',
+    blurb: 'A princess is taken. The realm holds its breath. You do not.',
   },
-  internship: {
-    title: 'Unpaid, Unholy Internship',
-    blurb: 'A wizard has offered you “experience.” You will pay in suffering.',
+  plague: {
+    title: 'Ashwater Plague',
+    blurb: 'A sickness spreads faster than truth. Find the cure before the bell tolls for everyone.',
   },
-  mimic: {
-    title: 'Chest With Feelings',
-    blurb: 'A mimic has chosen you. That is not a compliment.',
+  catastrophe: {
+    title: 'The Skybreak Omen',
+    blurb: 'The mountain groans. The sky burns at night. Something ancient is waking.',
   },
+
   treasure: {
     title: 'The Map That Shouldn’t Exist',
     blurb: 'A map falls into your hands, and suddenly everyone wants you dead.',
@@ -341,55 +344,69 @@ const ARC_META: Record<CampaignArcId, { title: string; blurb: string }> = {
     title: 'Black Letter',
     blurb: 'A letter brings bad news. Your grief becomes a direction.',
   },
+
+  internship: {
+    title: 'Unpaid, Unholy Internship',
+    blurb: 'A wizard has offered you “experience.” You will pay in suffering.',
+  },
+  mimic: {
+    title: 'Chest With Feelings',
+    blurb: 'A mimic has chosen you. That is not a compliment.',
+  },
 }
 
 const ARC_SCENE_POOLS: Record<CampaignArcId, Record<1 | 2 | 3, Array<{ id: string; weight: number }>>> = {
-  taxman: {
+  princess: {
     1: [
-      { id: 'tavern.taxman', weight: 5 },
-      { id: 'street.paperwork', weight: 2 },
-      { id: 'tavern.dripping_goblet', weight: 1 },
+      { id: 'court.missing_princess', weight: 4 },
+      { id: 'road.royal_messenger', weight: 3 },
+      { id: 'forest.tracks', weight: 2 },
     ],
     2: [
-      { id: 'street.paperwork', weight: 5 },
-      { id: 'court.day', weight: 3 },
-      { id: 'tavern.dripping_goblet', weight: 1 },
+      { id: 'forest.bandit_ambush', weight: 3 },
+      { id: 'ruins.witch_gate', weight: 3 },
+      { id: 'keep.outer_wall', weight: 3 },
     ],
     3: [
-      { id: 'court.day', weight: 6 },
-      { id: 'tavern.dripping_goblet', weight: 1 },
+      { id: 'keep.tower_rescue', weight: 4 },
+      { id: 'keep.escape', weight: 2 },
     ],
   },
-  internship: {
+
+  plague: {
     1: [
-      { id: 'tower.internship', weight: 5 },
-      { id: 'lab.safety', weight: 2 },
-      { id: 'tavern.dripping_goblet', weight: 1 },
+      { id: 'village.ashwater', weight: 4 },
+      { id: 'village.sickhouse', weight: 3 },
+      { id: 'chapel.prayer', weight: 1 },
     ],
     2: [
-      { id: 'lab.safety', weight: 5 },
-      { id: 'fallout.jar', weight: 3 },
-      { id: 'tavern.dripping_goblet', weight: 1 },
+      { id: 'swamp.rare_herb', weight: 3 },
+      { id: 'lab.apothecary', weight: 3 },
+      { id: 'road.quarantine', weight: 2 },
     ],
     3: [
-      { id: 'fallout.jar', weight: 6 },
-      { id: 'tavern.dripping_goblet', weight: 1 },
+      { id: 'catacombs.source', weight: 3 },
+      { id: 'temple.cure_ritual', weight: 3 },
     ],
   },
-  mimic: {
+
+  catastrophe: {
     1: [
-      { id: 'dungeon.mimic_intro', weight: 5 },
-      { id: 'tavern.dripping_goblet', weight: 1 },
+      { id: 'observatory.red_comet', weight: 4 },
+      { id: 'mountain.tremors', weight: 3 },
+      { id: 'town.omens', weight: 2 },
     ],
     2: [
-      { id: 'dungeon.mimic_intro', weight: 3 },
-      { id: 'tavern.dripping_goblet', weight: 1 },
+      { id: 'cult.black_chant', weight: 3 },
+      { id: 'ruins.ancient_engine', weight: 3 },
+      { id: 'mountain.rift', weight: 2 },
     ],
     3: [
-      { id: 'camp.mimic_finale', weight: 6 },
-      { id: 'tavern.dripping_goblet', weight: 1 },
+      { id: 'skybreak.finale', weight: 4 },
+      { id: 'skybreak.aftermath', weight: 2 },
     ],
   },
+
   treasure: {
     1: [
       { id: 'tavern.rumor_black_road', weight: 4 },
@@ -407,6 +424,7 @@ const ARC_SCENE_POOLS: Record<CampaignArcId, Record<1 | 2 | 3, Array<{ id: strin
       { id: 'vault.final_lock', weight: 3 },
     ],
   },
+
   vengeance: {
     1: [
       { id: 'letter.black_seal', weight: 4 },
@@ -423,14 +441,50 @@ const ARC_SCENE_POOLS: Record<CampaignArcId, Record<1 | 2 | 3, Array<{ id: strin
       { id: 'manor.aftermath', weight: 2 },
     ],
   },
+
+  internship: {
+    1: [
+      { id: 'tower.internship', weight: 5 },
+      { id: 'lab.safety', weight: 2 },
+      { id: 'tavern.dripping_goblet', weight: 1 },
+    ],
+    2: [
+      { id: 'lab.safety', weight: 5 },
+      { id: 'fallout.jar', weight: 3 },
+      { id: 'tavern.dripping_goblet', weight: 1 },
+    ],
+    3: [
+      { id: 'fallout.jar', weight: 6 },
+      { id: 'tavern.dripping_goblet', weight: 1 },
+    ],
+  },
+
+  mimic: {
+    1: [
+      { id: 'dungeon.mimic_intro', weight: 5 },
+      { id: 'tavern.dripping_goblet', weight: 1 },
+    ],
+    2: [
+      { id: 'dungeon.mimic_intro', weight: 3 },
+      { id: 'tavern.dripping_goblet', weight: 1 },
+    ],
+    3: [
+      { id: 'camp.mimic_finale', weight: 6 },
+      { id: 'tavern.dripping_goblet', weight: 1 },
+    ],
+  },
 }
 
 const ARC_FINALES: Record<CampaignArcId, string> = {
-  taxman: 'court.day',
-  internship: 'fallout.jar',
-  mimic: 'camp.mimic_finale',
+  princess: 'keep.tower_rescue',
+  plague: 'temple.cure_ritual',
+  catastrophe: 'skybreak.finale',
+
   treasure: 'vault.final_lock',
   vengeance: 'manor.confrontation',
+
+  internship: 'fallout.jar',
+  mimic: 'camp.mimic_finale',
 }
 
 function scene(id: string, category: string, title: string, body: string, choices: SceneChoice[]): Scene {
@@ -1379,6 +1433,409 @@ const SCENES: Record<string, Scene> = {
         onSuccess: (ch) => ({ c: { ...ch, xp: ch.xp + 2 }, text: 'Gary agrees to haunt your enemies instead. You feel supported in a toxic way. +2 XP.' }),
         onFail: (ch) => ({ c: { ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, text: 'Gary agrees to haunt you, specifically. You feel noticed. -1 HP.' }),
       },
+    ]
+  ),
+
+  // ARC — Princess
+  'court.missing_princess': scene(
+    'court.missing_princess',
+    'Court',
+    'The Stolen Heir',
+    'The throne room is crowded with silence. The Queen’s hands shake once, then go still. “My daughter is gone,” she says. “Bring her back.”',
+    [
+      {
+        id: 'oath',
+        text: 'Swear an oath before the court',
+        stat: 'CHA',
+        dc: 12,
+        onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 4 }, 'princess_oath'), 14), text: 'Your vow lands like steel on stone. The court gives you leave and a sealed writ. +4 XP.', logs: ['Quest accepted: The Stolen Heir'] }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10), text: 'You speak, but the room does not follow. A captain steps in and makes it official anyway. +1 XP.' }),
+      },
+      {
+        id: 'questions',
+        text: 'Question the captain of the guard',
+        stat: 'WIS',
+        dc: 13,
+        onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch }, 'guard_lead'), 12), text: 'He admits the truth: a gate was opened from the inside. A ribbon of ash leads toward the old road.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10), text: 'He gives you ceremony instead of detail. You learn where the lies are, if not the path. +1 XP.' }),
+      },
+      {
+        id: 'ride',
+        text: 'Leave at once',
+        stat: 'CON',
+        dc: 11,
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You ride until the castle lights are only memory. +2 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'You push too hard, too fast. Your body reminds you what it costs. -1 HP.' }),
+      },
+    ]
+  ),
+
+  'road.royal_messenger': scene(
+    'road.royal_messenger',
+    'Road',
+    'The Queen’s Messenger',
+    'A rider meets you at dusk. He is bleeding through his glove. “They took her east,” he says. “To the broken keep.”',
+    [
+      {
+        id: 'stanch',
+        text: 'Treat the wound and listen',
+        stat: 'WIS',
+        dc: 12,
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You stop the bleeding. He tells you what he saw: bandit cloaks, disciplined ranks, and a sigil painted over.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10), text: 'You do what you can. He talks anyway, voice going thin. +1 XP.' }),
+      },
+      {
+        id: 'press',
+        text: 'Press him for details',
+        stat: 'CHA',
+        dc: 14,
+        onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch }, 'keep_named'), 12), text: 'He names it: Greywatch Keep. He spits like the word tastes wrong.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'Your patience runs out. His fear answers with a shove. -1 HP.' }),
+      },
+      {
+        id: 'go',
+        text: 'Ride through the night',
+        stat: 'CON',
+        dc: 13,
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You keep moving until dawn finds you hollow-eyed and closer. +3 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'The road punishes haste. You arrive sore, but you arrive. -2 HP.' }),
+      },
+    ]
+  ),
+
+  'forest.tracks': scene(
+    'forest.tracks',
+    'Forest',
+    'Tracks in Wet Earth',
+    'Hoofprints. Bootprints. A dragged line where something heavy was pulled. Whoever did this knew the land.',
+    [
+      {
+        id: 'follow',
+        text: 'Follow the tracks',
+        stat: 'WIS',
+        dc: 13,
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You keep to the quiet places and find where they camped. The ashes are fresh.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'A branch snaps under your foot. Something moves ahead of you. -1 HP.' }),
+      },
+      {
+        id: 'shortcut',
+        text: 'Cut them off',
+        stat: 'INT',
+        dc: 14,
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 4 }, 14), text: 'You read the terrain like a map. You gain ground. +4 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10), text: 'You misjudge the ridge and lose an hour. You can still catch them. +1 XP.' }),
+      },
+      {
+        id: 'wait',
+        text: 'Set a trap and wait',
+        stat: 'DEX',
+        dc: 14,
+        onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch }, 'bandits_wounded'), 12), text: 'A snare bites into a rider’s leg. You hear curses, then hurried orders.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'Your trap catches you first. Pain is honest. -2 HP.' }),
+      },
+    ]
+  ),
+
+  'forest.bandit_ambush': scene(
+    'forest.bandit_ambush',
+    'Forest',
+    'The Ambush',
+    'They come out of the ferns like a practiced thought: blades low, voices calm. “Turn around,” one says. “This road is not for you.”',
+    [
+      {
+        id: 'fight',
+        text: 'Refuse and reach for your weapon',
+        stat: 'STR',
+        dc: 12,
+        onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'thug', onWin: { text: 'They break and run. You keep moving.', logs: ['Combat won: Bandit ambush'] }, onLose: { text: 'They leave you in the dirt and take your writ.', logs: ['Combat lost: Bandit ambush'] }, onFlee: { text: 'You vanish into the trees. They curse and give up.', logs: ['Fled: Bandit ambush'] } }) as any } }, 'ambush'), 12), text: 'Steel answers steel.' }),
+        onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'thug', onWin: { text: 'You force a path through them.', logs: ['Combat won: Bandit ambush'] }, onLose: { text: 'You are beaten down and robbed.', logs: ['Combat lost: Bandit ambush'] }, onFlee: { text: 'You escape, bleeding but alive.', logs: ['Fled: Bandit ambush'] } }) as any } }, 'ambush'), 10), text: 'You hesitate. They don’t.' }),
+      },
+      {
+        id: 'talk',
+        text: 'Talk them down',
+        stat: 'CHA',
+        dc: 15,
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 5 }, 14), text: 'You name the Crown and the consequence. Their eyes flicker. They let you pass. +5 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'They laugh once, and a fist finds your mouth. -1 HP.' }),
+      },
+      {
+        id: 'run',
+        text: 'Run for the ravine',
+        stat: 'DEX',
+        dc: 13,
+        onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 12), text: 'You slip between trees and stone. Their pursuit fails. +2 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'A thrown stone catches your shoulder. You keep moving. -2 HP.' }),
+      },
+    ]
+  ),
+
+  'ruins.witch_gate': scene(
+    'ruins.witch_gate',
+    'Ruins',
+    'The Witch-Gate',
+    'An arch of old stone stands in a clearing. Runes cut deep into the lintel are black with age. The air is colder beneath it.',
+    [
+      { id: 'study', text: 'Study the runes', stat: 'INT', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 4 }, 14), text: 'The gate wants a name, spoken true. You learn how to pass. +4 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10), text: 'The meaning slips away. The gate remains, patient. +1 XP.' }) },
+      { id: 'force', text: 'Force your way through', stat: 'STR', dc: 15, onSuccess: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp), xp: ch.xp + 3 }, 12), text: 'Stone yields. You pay for it in bruises. -1 HP, +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'The gate rejects you with a shove of cold. -2 HP.' }) },
+      { id: 'around', text: 'Go around', stat: 'WIS', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You find the safer path. It costs time, not blood. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You lose the path and return to the arch anyway. +1 XP.' }) },
+    ]
+  ),
+
+  'keep.outer_wall': scene(
+    'keep.outer_wall',
+    'Keep',
+    'Greywatch Walls',
+    'Greywatch Keep rises from rock like a clenched fist. Torches move along the battlements. Somewhere inside, a girl waits and tries not to scream.',
+    [
+      { id: 'climb', text: 'Climb the outer wall', stat: 'DEX', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 4 }, 14), text: 'Your fingers find holds in old stone. You are over the wall before anyone looks down. +4 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'A loose stone turns. You fall hard and swallow pain. -2 HP.' }) },
+      { id: 'sneak', text: 'Slip in through the drain', stat: 'WIS', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You find the hidden mouth of the keep and crawl into darkness. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'A rat bites you. It’s not heroic, but it’s real. -1 HP.' }) },
+      { id: 'front', text: 'Walk in like you belong', stat: 'CHA', dc: 15, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 5 }, 14), text: 'Confidence is a disguise. They let you through the gate. +5 XP.' }), onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'rival', onWin: { text: 'You force entry through blood and fear.', logs: ['Combat won: Gatehouse'] }, onLose: { text: 'You are driven back from the gate.', logs: ['Combat lost: Gatehouse'] }, onFlee: { text: 'You flee into the rocks and darkness.', logs: ['Fled: Gatehouse'] } }) as any } }, 'gate_fight'), 10), text: 'They see the lie in your eyes.' }) },
+    ]
+  ),
+
+  'keep.tower_rescue': scene(
+    'keep.tower_rescue',
+    'Keep',
+    'The Tower',
+    'The tower room stinks of lamp oil and old fear. The princess stands with wrists bound, chin lifted. “Took you long enough,” she whispers.',
+    [
+      { id: 'unlock', text: 'Pick the lock', stat: 'DEX', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 6, gold: ch.gold + 10 }, 20), text: 'The lock gives. You free her, and you take the kidnappers’ coin. +10 gold, +6 XP.', logs: ['Arc complete: The Stolen Heir'] }), onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'rival', onWin: { text: 'You cut your way to her side and break the bonds.', logs: ['Combat won: Tower rescue'] }, onLose: { text: 'You fall before you reach her.', logs: ['Combat lost: Tower rescue'] }, onFlee: { text: 'You retreat, regrouping in the dark corridors.', logs: ['Fled: Tower rescue'] } }) as any } }, 'tower_fight'), 14), text: 'Footsteps on the stairs. You are out of time.' }) },
+      { id: 'talk', text: 'Ask her what she saw', stat: 'WIS', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 4 }, 14), text: 'She names the sigil: a black sun. “They serve something under the mountain.” +4 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10), text: 'She gives you fragments. Enough to be afraid. +1 XP.' }) },
+      { id: 'rush', text: 'Cut the bonds with your blade', stat: 'STR', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp), xp: ch.xp + 3 }, 14), text: 'You snap the rope and nick your own hand. Blood on duty. -1 HP, +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'You slip and cut deeper than you mean to. -2 HP.' }) },
+    ]
+  ),
+
+  'keep.escape': scene(
+    'keep.escape',
+    'Keep',
+    'Breakout',
+    'Alarms bloom through the keep. Shouts. Boots. You have the heir. Now you need daylight.',
+    [
+      { id: 'sprint', text: 'Sprint for the stable', stat: 'CON', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 10), text: 'You reach the horses and ride hard into open country. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'A blade finds you in the crush. You keep running. -2 HP.' }) },
+      { id: 'hide', text: 'Hide in the cistern passage', stat: 'WIS', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 4 }, 12), text: 'You disappear into water and echo. They search above you and find nothing. +4 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'Cold water steals your breath. -1 HP.' }) },
+      { id: 'fight', text: 'Turn and fight your way out', stat: 'STR', dc: 12, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'rival', onWin: { text: 'You break their line and escape with her.', logs: ['Combat won: Breakout'] }, onLose: { text: 'They take her back as you fall.', logs: ['Combat lost: Breakout'] }, onFlee: { text: 'You flee through smoke and stone.', logs: ['Fled: Breakout'] } }) as any } }, 'breakout'), 12), text: 'You plant your feet and make a promise with steel.' }),
+        onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'rival', onWin: { text: 'You survive the crush and force a path.', logs: ['Combat won: Breakout'] }, onLose: { text: 'You are overwhelmed.', logs: ['Combat lost: Breakout'] }, onFlee: { text: 'You slip away, bruised and breathing.', logs: ['Fled: Breakout'] } }) as any } }, 'breakout'), 10), text: 'They come fast. Faster than your plan.' }),
+      },
+    ]
+  ),
+
+  // ARC — Plague
+  'village.ashwater': scene(
+    'village.ashwater',
+    'Village',
+    'Ashwater',
+    'The village smells of wet ash and boiled cloth. People keep their doors shut. A bell rings once every hour, counting the living.',
+    [
+      { id: 'offer', text: 'Offer help', stat: 'CHA', dc: 12, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 3 }, 'plague_arrived'), 12), text: 'They let you in. They do not thank you. They are saving their breath. +3 XP.', logs: ['Quest accepted: Ashwater Plague'] }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10), text: 'They distrust you, but desperation wins. You are pointed toward the sickhouse. +1 XP.' }) },
+      { id: 'observe', text: 'Observe the symptoms', stat: 'WIS', dc: 13, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch }, 'symptoms_known'), 12), text: 'Grey tongue. Black veins at the wrist. Fever that breaks, then returns. This is not a simple illness.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'You get too close. A cough finds your face. -1 HP.' }) },
+      { id: 'supplies', text: 'Buy masks and clean cloth', stat: 'CHA', dc: 11, onSuccess: (ch) => ({ c: advanceArc({ ...ch, gold: clamp(ch.gold - 2, 0, 999999), xp: ch.xp + 1 }, 10), text: 'You pay what you must. -2 gold, +1 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, gold: clamp(ch.gold - 3, 0, 999999) }, 8), text: 'They charge you more. Everyone is afraid. -3 gold.' }) },
+    ]
+  ),
+
+  'village.sickhouse': scene(
+    'village.sickhouse',
+    'Village',
+    'The Sickhouse',
+    'Cots line the floor. The healer’s hands are raw from washing. “If you’re here to help,” she says, “bring me a miracle or bring me ingredients.”',
+    [
+      { id: 'tend', text: 'Tend to the sick', stat: 'WIS', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 4 }, 14), text: 'You keep people breathing until the fever breaks. Some will live. +4 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'You misstep and get exposed. Your throat burns for a day. -2 HP.' }) },
+      { id: 'question', text: 'Question the healer', stat: 'INT', dc: 13, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch }, 'cure_hint'), 12), text: 'She says it started after the miners broke into a sealed tunnel. “Something down there breathes poison.”' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10), text: 'She’s too tired for details. You get the direction anyway: the swamp, then the catacombs. +1 XP.' }) },
+      { id: 'leave', text: 'Leave to gather ingredients', stat: 'CON', dc: 10, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You set out before night falls. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You hesitate, then go. +1 XP.' }) },
+    ]
+  ),
+
+  'chapel.prayer': scene(
+    'chapel.prayer',
+    'Chapel',
+    'Candles and Quiet',
+    'The chapel is full of smoke and whispered names. A priest looks up as if you are late to something important.',
+    [
+      { id: 'ask', text: 'Ask for a blessing', stat: 'CHA', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'He marks your brow with ash and salt. “Do not breathe deep in the dark.” +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'He offers you a candle and a warning. It’s something. +1 XP.' }) },
+      { id: 'study', text: 'Study the chapel records', stat: 'INT', dc: 13, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch }, 'plague_history'), 12), text: 'You find the last mention of this sickness. It ended when the sealed tunnel was collapsed.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'The ink is old and the names blur. You learn only that this has happened before. +1 XP.' }) },
+      { id: 'go', text: 'Leave before grief sticks to you', stat: 'WIS', dc: 11, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You leave with purpose intact. +1 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You stay long enough to hear one more name. Then you go. +1 XP.' }) },
+    ]
+  ),
+
+  'swamp.rare_herb': scene(
+    'swamp.rare_herb',
+    'Swamp',
+    'Nightroot',
+    'The swamp steams. In the black water, something glides without ripples. You find nightroot under a fallen log, pale as bone.',
+    [
+      { id: 'harvest', text: 'Harvest the herb carefully', stat: 'DEX', dc: 14, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, inventory: [...ch.inventory, 'Nightroot'] }, 'nightroot'), 14), text: 'You take what you need and leave the rest. The swamp does not object.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'The log shifts. Teeth find your calf. -2 HP.' }) },
+      { id: 'listen', text: 'Listen for movement', stat: 'WIS', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You spot the ripple in time and avoid it. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'You misread the sound. Cold water grabs your ankle. -1 HP.' }) },
+      { id: 'torch', text: 'Use a torch and move fast', stat: 'CON', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You get in and out with smoke in your lungs. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'The smoke burns your throat. -1 HP.' }) },
+    ]
+  ),
+
+  'lab.apothecary': scene(
+    'lab.apothecary',
+    'Apothecary',
+    'Bitter Work',
+    'Mortar. Pestle. Boiling water. The healer watches your hands. “If you ruin this,” she says, “people die.”',
+    [
+      { id: 'brew', text: 'Brew the tonic', stat: 'INT', dc: 14, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 5 }, 'tonic_brewed'), 14), text: 'The mixture turns clear. The room smells like iron and rain. +5 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'You spill boiling liquid. Your hand blisters. -1 HP.' }) },
+      { id: 'taste', text: 'Taste and adjust', stat: 'WIS', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You fix the bitterness without weakening the medicine. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'It burns on the tongue. You cough until your eyes water. -1 HP.' }) },
+      { id: 'rest', text: 'Rest a moment', stat: 'CON', dc: 11, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You keep yourself steady. +1 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You lose time, not hope. +1 XP.' }) },
+    ]
+  ),
+
+  'road.quarantine': scene(
+    'road.quarantine',
+    'Road',
+    'Quarantine Line',
+    'A militia blocks the road with carts and rope. Behind them, you hear coughing. “No one leaves,” the captain says.',
+    [
+      { id: 'argue', text: 'Argue your way through', stat: 'CHA', dc: 15, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 4 }, 14), text: 'You convince them the cure requires passage. Reluctantly, they open the line. +4 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'A soldier shoves you back. In the scuffle, someone coughs in your face. -1 HP.' }) },
+      { id: 'sneak', text: 'Sneak around at dusk', stat: 'DEX', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You slip through the reeds and past their lanterns. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'A dog finds you. Teeth and shouting follow. -2 HP.' }) },
+      { id: 'help', text: 'Help reinforce the line', stat: 'WIS', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You earn trust by doing the hard thing. The captain lets you pass with an escort. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You try. They still don’t trust you. You learn who they’re afraid of. +1 XP.' }) },
+    ]
+  ),
+
+  'catacombs.source': scene(
+    'catacombs.source',
+    'Catacombs',
+    'The Source',
+    'Below the mine, the stone is wet with a black sheen. A shallow pool breathes like a lung. The sickness has a home.',
+    [
+      { id: 'sample', text: 'Take a sample', stat: 'INT', dc: 14, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, inventory: [...ch.inventory, 'Black Ichorsample'] }, 'ichor'), 14), text: 'You bottle it without touching it. The glass fogs from within.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 12), text: 'Your glove tears. The cold goes straight into your veins. -3 HP.' }) },
+      { id: 'seal', text: 'Try to seal the pool', stat: 'STR', dc: 15, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 5 }, 14), text: 'You collapse stone into stone. The pool’s “breathing” slows. +5 XP.' }), onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'hound', onWin: { text: 'You drive it back into the dark.', logs: ['Combat won: Catacombs'] }, onLose: { text: 'It mauls you and retreats, satisfied.', logs: ['Combat lost: Catacombs'] }, onFlee: { text: 'You escape the tunnel before it closes on you.', logs: ['Fled: Catacombs'] } }) as any } }, 'catacombs_fight'), 12), text: 'Something rises from the water, hungry for heat.' }) },
+      { id: 'leave', text: 'Retreat with what you’ve learned', stat: 'WIS', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You leave before the dark learns your name. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'You turn too late and scrape your arm on stone. -1 HP.' }) },
+    ]
+  ),
+
+  'temple.cure_ritual': scene(
+    'temple.cure_ritual',
+    'Temple',
+    'The Cure',
+    'The ritual circle is drawn in salt and soot. The healer holds the tonic like it’s a prayer. “Do it,” she says. “Now.”',
+    [
+      { id: 'perform', text: 'Perform the ritual', stat: 'WIS', dc: 15, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 8, gold: ch.gold + 12 }, 22), text: 'The air sharpens. The sickness recoils. The bell stops ringing for a while. +12 gold, +8 XP.', logs: ['Arc complete: Ashwater Plague'] }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 14), text: 'The circle breaks. The backlash steals your breath. -3 HP.' }) },
+      { id: 'lead', text: 'Let the healer lead', stat: 'CHA', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 4 }, 14), text: 'You give her courage when her hands shake. She finishes the chant. +4 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10), text: 'She falters. You recover, barely. The cure still works, but it costs time. +1 XP.' }) },
+      { id: 'guard', text: 'Stand guard', stat: 'STR', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You keep the doorway clear. Fear stays outside. +3 XP.' }),
+        onFail: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'hound', onWin: { text: 'You hold the line until the chant ends.', logs: ['Combat won: Temple'] }, onLose: { text: 'You fall as the ritual completes without you.', logs: ['Combat lost: Temple'] }, onFlee: { text: 'You retreat, and the healer finishes alone.', logs: ['Fled: Temple'] } }) as any } }, 'temple_fight'), 12), text: 'A fever-mad thing charges the door. You meet it head on.' }) },
+    ]
+  ),
+
+  // ARC — Catastrophe
+  'observatory.red_comet': scene(
+    'observatory.red_comet',
+    'Observatory',
+    'Red Comet',
+    'The astronomer points with a trembling finger. A red comet drags its tail across the sky, too low, too bright. “It was not here yesterday.”',
+    [
+      { id: 'learn', text: 'Learn what it means', stat: 'INT', dc: 14, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 4 }, 'omen_known'), 14), text: 'Old charts agree: when this comet returns, the mountain opens. +4 XP.', logs: ['Quest accepted: The Skybreak Omen'] }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10), text: 'The charts contradict each other. Only the fear is consistent. +1 XP.' }) },
+      { id: 'climb', text: 'Head for the mountain', stat: 'CON', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You leave before dawn. +2 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'The cold takes a bite. -1 HP.' }) },
+      { id: 'warn', text: 'Warn the town', stat: 'CHA', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'They listen. Some pack. Some pray. Some sharpen knives. +3 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'They call it superstition until the ground shivers under their feet. +1 XP.' }) },
+    ]
+  ),
+
+  'mountain.tremors': scene(
+    'mountain.tremors',
+    'Mountain',
+    'Tremors',
+    'The path up is cracked. Small stones roll downhill on their own. Something deep inside the mountain is turning over in its sleep.',
+    [
+      { id: 'press', text: 'Press higher', stat: 'CON', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You keep your footing. The air thins and sharpens. +3 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'A stone shelf gives way. You catch yourself late. -2 HP.' }) },
+      { id: 'listen', text: 'Listen for patterns', stat: 'WIS', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 4 }, 14), text: 'The tremors come in a rhythm. Something is being fed. +4 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10), text: 'All you hear is your own blood. +1 XP.' }) },
+      { id: 'shelter', text: 'Find shelter', stat: 'INT', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You find a crack in the rock and wait out the worst shaking. +2 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'You shelter in the wrong place and get showered in grit. -1 HP.' }) },
+    ]
+  ),
+
+  'town.omens': scene(
+    'town.omens',
+    'Town',
+    'Bad Signs',
+    'Goats refuse water. Dogs howl at empty doorways. A child draws the comet in ash and won’t stop.',
+    [
+      { id: 'calm', text: 'Calm the crowd', stat: 'CHA', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You keep panic from becoming violence. +3 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10), text: 'Fear wins. People run in all directions. +1 XP.' }) },
+      { id: 'supply', text: 'Gather supplies', stat: 'WIS', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, gold: ch.gold + 3 }, 10), text: 'Someone presses coin into your palm. “For the mountain,” they say. +3 gold.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'The shelves are bare. People have been preparing without admitting it. +1 XP.' }) },
+      { id: 'follow', text: 'Follow the black-robed strangers', stat: 'DEX', dc: 14, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch }, 'cult_seen'), 12), text: 'You trail them to a cellar door marked with a black sun.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'You are spotted and shoved into a wall. -1 HP.' }) },
+    ]
+  ),
+
+  'cult.black_chant': scene(
+    'cult.black_chant',
+    'Cult',
+    'The Black Chant',
+    'Below the town, candles burn with a blue flame. Voices chant in a language that scrapes the teeth. A black sun is painted on the floor.',
+    [
+      { id: 'interrupt', text: 'Interrupt the ritual', stat: 'STR', dc: 13, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'thug', onWin: { text: 'The chant breaks. They scatter into tunnels.', logs: ['Combat won: Cult cellar'] }, onLose: { text: 'They overwhelm you and continue chanting.', logs: ['Combat lost: Cult cellar'] }, onFlee: { text: 'You escape before they drag you to the circle.', logs: ['Fled: Cult cellar'] } }) as any } }, 'cult_fight'), 12), text: 'You kick over the nearest candle and step into the smoke.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'A knife finds your ribs in the dark. -2 HP.' }) },
+      { id: 'listen', text: 'Listen and learn the chant', stat: 'INT', dc: 15, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 5 }, 14), text: 'You catch a phrase: “Open the Skybreak.” You learn their goal. +5 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10), text: 'The words refuse meaning. You learn only dread. +1 XP.' }) },
+      { id: 'leave', text: 'Leave and warn the mountain watch', stat: 'CON', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You run until your legs burn. +2 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'You slip on the steps and crack your knee. -1 HP.' }) },
+    ]
+  ),
+
+  'ruins.ancient_engine': scene(
+    'ruins.ancient_engine',
+    'Ruins',
+    'Ancient Engine',
+    'In a buried chamber, an enormous ring of metal hums without fire. Runes pulse like a heartbeat. This is not a shrine. It is a machine.',
+    [
+      { id: 'study', text: 'Study the controls', stat: 'INT', dc: 15, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 5 }, 'engine_known'), 14), text: 'You learn what it does: it vents pressure from the mountain into the sky. Someone is trying to reverse it. +5 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10), text: 'The runes blur. The machine keeps humming. +1 XP.' }) },
+      { id: 'break', text: 'Break it so no one can use it', stat: 'STR', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You damage a key strut. The hum drops an octave. +3 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'The machine throws you back with a burst of heat. -2 HP.' }) },
+      { id: 'mark', text: 'Mark the path and leave', stat: 'WIS', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You memorize the route. You will need to return here. +2 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You mark it poorly. You can still find it… maybe. +1 XP.' }) },
+    ]
+  ),
+
+  'mountain.rift': scene(
+    'mountain.rift',
+    'Mountain',
+    'The Rift',
+    'A crack runs down the mountainside, venting warm air that smells like copper. Down inside, something glows. The earth is splitting.',
+    [
+      { id: 'descend', text: 'Descend into the rift', stat: 'DEX', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 4 }, 14), text: 'You climb down with careful hands. The stone is alive with heat. +4 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 12), text: 'You slip. Rock tears skin. -3 HP.' }) },
+      { id: 'observe', text: 'Observe from above', stat: 'WIS', dc: 13, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You see shapes moving in the glow. Cultists. And something else. +3 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 10), text: 'Heat distorts everything. You can’t be sure. +1 XP.' }) },
+      { id: 'retreat', text: 'Retreat and plan', stat: 'INT', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You choose caution. It is not cowardice. +2 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'You waste time arguing with yourself. +1 XP.' }) },
+    ]
+  ),
+
+  'skybreak.finale': scene(
+    'skybreak.finale',
+    'Skybreak',
+    'Prevent the Catastrophe',
+    'At the mountain’s heart, the cult chants around the ancient engine. The red comet’s light pours down through the rift like blood. One wrong moment, and the sky tears.',
+    [
+      { id: 'shut', text: 'Shut the engine down', stat: 'INT', dc: 16, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 10, gold: ch.gold + 15 }, 24), text: 'You reverse the sequence. The hum steadies. The mountain exhales. The sky stays whole. +15 gold, +10 XP.', logs: ['Arc complete: The Skybreak Omen'] }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 4, 0, ch.maxHp) }, 14), text: 'The backlash hurls you across stone. The engine screams. -4 HP.' }) },
+      { id: 'fight', text: 'Fight through the cult', stat: 'STR', dc: 13, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'rival', onWin: { text: 'You break the circle and buy the world time.', logs: ['Combat won: Skybreak'] }, onLose: { text: 'They drag you down as the chant continues.', logs: ['Combat lost: Skybreak'] }, onFlee: { text: 'You escape the chamber as the mountain roars.', logs: ['Fled: Skybreak'] } }) as any } }, 'skybreak_fight'), 14), text: 'You step into the circle and make yourself the problem.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'A blade catches you in the crowd. -2 HP.' }) },
+      { id: 'prayer', text: 'Attempt a counter-chant', stat: 'WIS', dc: 15, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 6 }, 14), text: 'You speak old words with a steady mouth. The comet-light falters. +6 XP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 3, 0, ch.maxHp) }, 12), text: 'Your voice breaks, and the darkness answers. -3 HP.' }) },
+    ]
+  ),
+
+  'skybreak.aftermath': scene(
+    'skybreak.aftermath',
+    'Skybreak',
+    'Aftermath',
+    'Dawn comes. The mountain is quiet. People look up at an ordinary sky and cry like they forgot they could.',
+    [
+      { id: 'leave', text: 'Leave before they make you a story', stat: 'WIS', dc: 11, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'You leave while it is still yours. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'They stop you long enough to say thank you. +1 XP.' }) },
+      { id: 'stay', text: 'Stay and help rebuild', stat: 'CON', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 3 }, 12), text: 'You help carry stone and set beams. It matters. +3 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 10), text: 'Your body argues. You work anyway. -1 HP.' }) },
+      { id: 'speak', text: 'Speak with the astronomer', stat: 'INT', dc: 12, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 2 }, 10), text: 'He shows you a fresh chart. “There are other omens,” he says. +2 XP.' }), onFail: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 1 }, 8), text: 'He can’t stop shaking. You leave him to the sky. +1 XP.' }) },
     ]
   ),
 
