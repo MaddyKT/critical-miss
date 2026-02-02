@@ -30,7 +30,7 @@ export function spellForClass(className: Character['className']): { name: string
   return null
 }
 
-export function makeEnemy(kind: 'thug' | 'hound' | 'rival'): CombatEnemy {
+export function makeEnemy(kind: 'thug' | 'hound' | 'rival' | 'cultist'): CombatEnemy {
   if (kind === 'hound') {
     const intent: EnemyIntent = { kind: 'attack', label: 'Lunge', toHit: 2, dmg: { dice: 1, sides: 6 }, stat: 'DEX' }
     return { id: uid('e'), name: 'Starving Hound', maxHp: 10, hp: 10, ac: 12, intent }
@@ -39,8 +39,12 @@ export function makeEnemy(kind: 'thug' | 'hound' | 'rival'): CombatEnemy {
     const intent: EnemyIntent = { kind: 'heavy', label: 'Power strike', toHit: 3, dmg: { dice: 1, sides: 10 }, stat: 'STR' }
     return { id: uid('e'), name: 'Rival Adventurer', maxHp: 16, hp: 16, ac: 13, intent }
   }
+  if (kind === 'cultist') {
+    const intent: EnemyIntent = { kind: 'attack', label: 'Ritual blade', toHit: 3, dmg: { dice: 1, sides: 8 }, stat: 'DEX' }
+    return { id: uid('e'), name: 'Black Choir Acolyte', maxHp: 14, hp: 14, ac: 12, intent }
+  }
   const intent: EnemyIntent = { kind: 'attack', label: 'Cheap shot', toHit: 3, dmg: { dice: 1, sides: 8 }, stat: 'STR' }
-  return { id: uid('e'), name: 'Tavern Thug', maxHp: 14, hp: 14, ac: 12, intent }
+  return { id: uid('e'), name: 'Thug', maxHp: 14, hp: 14, ac: 12, intent }
 }
 
 export function nextIntent(_enemy: CombatEnemy): EnemyIntent {
@@ -55,7 +59,7 @@ export function nextIntent(_enemy: CombatEnemy): EnemyIntent {
 
 export function startCombat(input: {
   c: Character
-  enemyKind: 'thug' | 'hound' | 'rival'
+  enemyKind: 'thug' | 'hound' | 'rival' | 'cultist'
   onWin: CombatState['onWin']
   onLose: CombatState['onLose']
   onFlee: CombatState['onFlee']

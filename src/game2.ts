@@ -383,7 +383,10 @@ function shouldTriggerCombat(scene: Scene, text: string) {
   return false
 }
 
-function enemyKindForScene(scene: Scene): 'thug' | 'hound' | 'rival' {
+function enemyKindForScene(scene: Scene): 'thug' | 'hound' | 'rival' | 'cultist' {
+  // Star-Fall uses the Black Choir as the default human opponent.
+  if (scene.id.startsWith('starfall.')) return 'cultist'
+
   const cat = scene.category.toLowerCase()
   if (cat.includes('tavern') || cat.includes('street')) return 'thug'
   if (cat.includes('manor')) return 'rival'
