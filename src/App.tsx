@@ -5,7 +5,7 @@ import { SCENARIO_PACKS, type ScenarioPack } from './scenarioPacks'
 import { clearSave, loadSave, saveGame } from './storage'
 import { clamp, modFromStat, pick, rollDie } from './utils'
 import { ModalCard } from './components/ModalCard'
-import { generateBackground, makeNewCharacter, nextTurnScene, resolveRoll, chooseToRoll, randomName, restartAdventure, xpForLevel, proficiencyBonusForLevel } from './game2'
+import { generateBackground, makeNewCharacter, nextTurnScene, resolveRoll, chooseToRoll, randomName, restartAdventure, xpForLevel } from './game2'
 import { enemyTurn, playerAttack, playerGuard, playerRun, cantripFor, spellFor, weaponForClass } from './combat'
 import { longRest, shortRest } from './rest'
 import { DiceModal } from './dice/DiceModal'
@@ -298,12 +298,10 @@ export default function App() {
         <main className="game">
           <section className="sheet">
             {(() => {
-              const prof = proficiencyBonusForLevel(character.level)
               const dexMod = modFromStat(character.stats.DEX)
               const conMod = modFromStat(character.stats.CON)
               const init = dexMod
               const ac = 10 + dexMod
-              const speed = 30
               const initials = character.name
                 .split(' ')
                 .filter(Boolean)
@@ -354,14 +352,6 @@ export default function App() {
                   </div>
 
                   <div className="dashQuick">
-                    <div className="dashStatBox">
-                      <div className="dashStatTop">PROF</div>
-                      <div className="dashStatBig">+{prof}</div>
-                    </div>
-                    <div className="dashStatBox">
-                      <div className="dashStatTop">SPEED</div>
-                      <div className="dashStatBig">{speed} ft</div>
-                    </div>
                     <div className="dashStatBox">
                       <div className="dashStatTop">INIT</div>
                       <div className="dashStatBig">{init >= 0 ? `+${init}` : init}</div>
