@@ -198,17 +198,22 @@ export function randomName(sex: Character['sex']) {
 }
 
 export function generateBackground(c: Character) {
-  const hooks = [
-    'raised by a cleric with debt and a bard with commitment issues',
-    'cursed at birth by an intern wizard who was “pretty sure” it would wear off',
-    'destined for greatness, according to a prophecy written on a bar napkin',
-    'trained by monks until you got banned for “excessive vibes”',
-    'born during a lightning storm that definitely meant something ominous',
-  ]
-
   const arc = ARC_META[c.campaign.arcId]
   const raceNote = applyRaceBonuses(c.stats, c.race).note
-  return `You are a ${c.race.toLowerCase()} ${c.sex.toLowerCase()} ${c.className.toLowerCase()} who was ${pick(hooks)}.\n\nRace bonuses: ${raceNote}.\n\nCurrent campaign: ${arc.title} (Act ${c.campaign.act}).`
+
+  // Plain, archetypal hooks that don't tell the player what they feel.
+  const templates: string[] = [
+    'You were abandoned as a child and raised in a temple. You learned discipline, patience, and how to keep your head down. When you were old enough to choose your own life, you left with nothing but a name. You have been surviving on your own ever since. Now you are ready to step into something bigger.',
+    'You grew up on a hard border where danger was common and help was rare. You learned to work, to fight, and to keep moving. When trouble started spreading beyond your home, you didn’t wait for someone else to answer the call. You left to do what you can.',
+    'You studied under a mentor who taught you the basics and warned you about the world outside. You learned enough to be dangerous, and enough to know how unprepared you are. When rumors reached you of a threat that could not be ignored, you packed your things and set out.',
+    'You lived most of your life in the shadows of a city. You learned how to stay unnoticed, how to read people, and how to leave before the trouble arrives. The life kept you alive, but it did not give you a future. You left to make one.',
+    'You were part of a small order that believed service mattered more than comfort. You learned to endure, to hold a line, and to keep your word. When the realm began to fracture under new fears, you took up your gear and went to meet it.',
+    'You grew up close to the wild places and learned to respect what you cannot control. You watched seasons turn wrong and animals behave strangely. When you realized it was not a local problem, you left home to find the source.',
+  ]
+
+  const backstory = pick(templates)
+
+  return `You are a level 1 ${c.className.toLowerCase()} ${c.race.toLowerCase()} ${c.sex.toLowerCase()}.\n${backstory}\n\nRace bonuses: ${raceNote}.\nCurrent campaign: ${arc.title} (Act ${c.campaign.act}).`
 }
 
 export function nextTurnScene(c: Character): Scene {
