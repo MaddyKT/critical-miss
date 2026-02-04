@@ -106,6 +106,7 @@ function normalizeV4(save: SaveFile): SaveFile {
   if (!c.campaign || typeof c.campaign !== 'object') {
     c.campaign = { arcId: 'starfall', act: 1, progress: 0, flags: {}, seenSceneIds: [] }
   }
+  if (!c.campaign.flags || typeof c.campaign.flags !== 'object') c.campaign.flags = {}
   if (!['starfall'].includes(c.campaign.arcId)) c.campaign.arcId = 'starfall'
   if (!Array.isArray(c.campaign.seenSceneIds)) c.campaign.seenSceneIds = []
 

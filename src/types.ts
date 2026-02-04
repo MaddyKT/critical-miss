@@ -15,6 +15,8 @@ export type Stats = {
 
 export type CampaignArcId = 'starfall'
 
+export type FlagValue = boolean | number | string
+
 export type CampaignState = {
   arcId: CampaignArcId
   /** 1..3 */
@@ -22,7 +24,7 @@ export type CampaignState = {
   /** 0..100 */
   progress: number
   /** lightweight continuity flags scoped to the arc */
-  flags: Record<string, boolean>
+  flags: Record<string, FlagValue>
   /** scene ids already used in this arc; used to prevent repeats */
   seenSceneIds: string[]
 }
@@ -61,7 +63,7 @@ export type Character = {
   spellSlotsRemaining: number
 
   stats: Stats
-  flags: Record<string, boolean>
+  flags: Record<string, FlagValue>
   nextSceneId?: string | null
   lastSceneId?: string | null
   recentSceneIds?: string[]
@@ -96,6 +98,8 @@ export type SceneChoice = {
   dc: number
   // for later: adv/disadv, multi-stat, etc.
   onSuccess: (c: Character) => SceneOutcome
+  /** Optional partial success: outcome advances but with a complication. */
+  onMixed?: (c: Character) => SceneOutcome
   onFail: (c: Character) => SceneOutcome
 }
 

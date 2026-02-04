@@ -1,4 +1,4 @@
-import type { CampaignArcId, CampaignState, Character, GameLogEntry, Scene, SceneChoice, PendingRoll, Stats, RaceName } from './types'
+import type { CampaignArcId, CampaignState, Character, GameLogEntry, Scene, SceneChoice, PendingRoll, Stats, RaceName, FlagValue } from './types'
 import { clamp, d20, modFromStat, pick, uid } from './utils'
 import { startCombat } from './combat'
 
@@ -434,7 +434,19 @@ export function resolveRoll(
   const roll = typeof forcedRoll === 'number' ? forcedRoll : d20()
   const bonus = modFromStat(c.stats[choice.stat])
   const total = roll + bonus
-  const success = roll !== 1 && total >= choice.dc
+
+  // Tiered outcomes (hybrid narrative):
+  // - crit fail: natural 1
+  // - fail: below DC
+  // - mixed: meets DC but not by much (if onMixed exists)
+  // - success: meets DC
+  // - crit success: natural 20 (handled via bonus XP/flags in scene outcomes if desired)
+  const isCritFail = roll === 1
+  const isCritSuccess = roll === 20
+  const margin = total - choice.dc
+  const mixedEligible = Boolean(choice.onMixed)
+  const mixed = !isCritFail && total >= choice.dc && mixedEligible && margin <= 2 && !isCritSuccess
+  const success = !isCritFail && total >= choice.dc && !mixed
 
   // advance time on resolution
   c.day += 1
@@ -444,6 +456,16 @@ export function resolveRoll(
 
   const entries: GameLogEntry[] = []
   const breakdown = `d20 ${roll} + ${choice.stat} ${bonus >= 0 ? `+${bonus}` : bonus} = ${total} vs DC ${choice.dc}`
+
+  // Light "memory" reinforcement: if the player repeats a tactic, slightly raise DC.
+  // (Keeps hybrid feel: continuity + variety, without hard-locking choices.)
+  const tacticKey = `tactic_${scene.id}_${choice.id}`
+  if (hasFlag(c, tacticKey)) {
+    // If they've done this exact choice before (possible via queued scenes), make it a bit harder.
+    // Note: does not retroactively change success; it affects future scenes that reference this flag.
+    c = incArcFlag(c, `tactic_repeat_${choice.stat}`, 1)
+  }
+  c = setArcFlag(c, tacticKey, true)
 
   const hpBefore = c0.hp
 
@@ -485,11 +507,19 @@ export function resolveRoll(
     const r = choice.onSuccess(c)
     c = applyOutcome(r)
     return { c, log: entries, outcomeText: r.text, breakdown, roll, success }
-  } else {
-    const r = choice.onFail(c)
-    c = applyOutcome(r)
-    return { c, log: entries, outcomeText: r.text, breakdown, roll, success }
   }
+
+  if (mixed && choice.onMixed) {
+    // Mixed success: advance but introduce a complication.
+    const r = choice.onMixed(c)
+    c = applyOutcome(r)
+    entries.push(log(c.day, 'Mixed success.'))
+    return { c, log: entries, outcomeText: r.text, breakdown: `${breakdown} (mixed)`, roll, success: true }
+  }
+
+  const r = choice.onFail(c)
+  c = applyOutcome(r)
+  return { c, log: entries, outcomeText: r.text, breakdown, roll, success: false }
 }
 
 function shouldTriggerCombat(scene: Scene, text: string) {
@@ -525,8 +555,21 @@ function setNext(c: Character, nextSceneId: string | null): Character {
   return { ...c, nextSceneId }
 }
 
-function setArcFlag(c: Character, key: string, value = true): Character {
+function getFlag(c: Character, key: string): FlagValue | undefined {
+  return (c.campaign.flags ?? {})[key]
+}
+
+function hasFlag(c: Character, key: string): boolean {
+  return Boolean(getFlag(c, key))
+}
+
+function setArcFlag(c: Character, key: string, value: FlagValue = true): Character {
   return { ...c, campaign: { ...c.campaign, flags: { ...c.campaign.flags, [key]: value } } }
+}
+
+function incArcFlag(c: Character, key: string, delta = 1): Character {
+  const cur = Number(getFlag(c, key) ?? 0)
+  return setArcFlag(c, key, cur + delta)
 }
 
 function advanceArc(c: Character, delta: number): Character {
