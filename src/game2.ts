@@ -164,7 +164,8 @@ export type StatGenMode = 'weighted' | 'chaos'
 
 // D&D 5e XP thresholds (levels 1..20), scaled down for this game.
 // Goal: it should take multiple full campaigns to reach level 20.
-const XP_SCALE = 100
+// Bigger numbers = slower leveling. (We want leveling to feel earned and take a long time.)
+const XP_SCALE = 5
 const XP_FOR_LEVEL_RAW: number[] = [
   0,
   0, // level 1

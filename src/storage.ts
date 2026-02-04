@@ -67,8 +67,30 @@ function normalizeV4(save: SaveFile): SaveFile {
   // level / xp normalization (D&D-ish thresholds)
   if (typeof c.xp !== 'number') c.xp = 0
   if (typeof c.level !== 'number') c.level = 1
-  // D&D-ish XP thresholds scaled down to match game pacing
-  const XP_FOR_LEVEL = [0, 0, 3, 9, 27, 65, 140, 230, 340, 480, 640, 850, 1000, 1200, 1400, 1650, 1950, 2250, 2650, 3050, 3550]
+  // D&D-ish XP thresholds scaled for this game (slower leveling)
+  const XP_FOR_LEVEL = [
+    0,
+    0, // level 1
+    60,
+    180,
+    540,
+    1300,
+    2800,
+    4600,
+    6800,
+    9600,
+    12800,
+    17000,
+    20000,
+    24000,
+    28000,
+    33000,
+    39000,
+    45000,
+    53000,
+    61000,
+    71000, // level 20
+  ]
   let lvl = 1
   for (let l = 20; l >= 1; l--) {
     if (c.xp >= (XP_FOR_LEVEL[l] ?? 0)) {

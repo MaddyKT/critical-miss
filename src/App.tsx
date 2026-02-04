@@ -5,7 +5,7 @@ import { SCENARIO_PACKS, type ScenarioPack } from './scenarioPacks'
 import { clearSave, loadSave, saveGame } from './storage'
 import { clamp, modFromStat, pick, rollDie } from './utils'
 import { ModalCard } from './components/ModalCard'
-import { generateBackground, makeNewCharacter, nextTurnScene, resolveRoll, chooseToRoll, randomName, restartAdventure, xpForLevel } from './game2'
+import { generateBackground, makeNewCharacter, nextTurnScene, resolveRoll, chooseToRoll, randomName, restartAdventure, xpForLevel, applyLeveling } from './game2'
 import { enemyTurn, playerAttack, playerGuard, playerRun, cantripFor, spellFor, weaponForClass } from './combat'
 import { longRest, shortRest } from './rest'
 import { DiceModal } from './dice/DiceModal'
@@ -38,6 +38,8 @@ export default function App() {
 
   const [companionsOpen, setCompanionsOpen] = useState(false)
   const [inventoryOpen, setInventoryOpen] = useState(false)
+  const [itemInspect, setItemInspect] = useState<string | null>(null)
+  const [pressTimer, setPressTimer] = useState<number | null>(null)
 
   const [adWatching, setAdWatching] = useState(false)
 
@@ -121,6 +123,51 @@ export default function App() {
 
   function closeOutcome() {
     setSave((prev) => ({ ...prev, stage: { kind: 'idle' } }))
+  }
+
+  function combatXpReward(enemy: { name: string; maxHp: number }) {
+    // Simple pacing: small fights still feel rewarding.
+    // Tune later; baseline around 20–50 XP.
+    return clamp(Math.round(enemy.maxHp * 3), 20, 60)
+  }
+
+  function finalizeCombatOutcome(input: {
+    c: any
+    combat: any
+    actionText: string
+    out: { text: string; nextSceneId?: string | null; logs?: string[] }
+    kind: 'win' | 'flee'
+  }) {
+    let c2 = input.c
+
+    // Apply reward for wins (and a smaller reward for fleeing).
+    const base = combatXpReward(input.combat.enemy)
+    const xpGain = input.kind === 'win' ? base : Math.max(10, Math.floor(base / 2))
+    c2 = { ...c2, xp: (c2.xp ?? 0) + xpGain }
+
+    if (typeof input.out.nextSceneId === 'string') {
+      c2 = { ...c2, nextSceneId: input.out.nextSceneId }
+    }
+
+    // Leveling after XP changes.
+    const leveled = applyLeveling(c2)
+    c2 = leveled.c
+
+    const extraLogs: any[] = []
+    for (const t of input.out.logs ?? []) extraLogs.push({ id: `log_${Date.now()}_${Math.random()}`, day: c2.day, text: t })
+    for (const t of leveled.logs) extraLogs.push({ id: `log_${Date.now()}_${Math.random()}`, day: c2.day, text: t })
+
+    setSave((prev) => ({
+      ...prev,
+      character: c2,
+      log: [
+        ...prev.log,
+        { id: `log_${Date.now()}`, day: c2.day, text: input.actionText },
+        { id: `log_${Date.now()}_xp`, day: c2.day, text: `+${xpGain} XP.` },
+        ...extraLogs,
+      ],
+      stage: { kind: 'outcome', scene: { id: 'combat', category: 'Combat', title: input.kind === 'win' ? 'Victory' : 'Escaped', body: '', choices: [] } as any, outcomeText: input.out.text },
+    }))
   }
 
   function openShortRest() {
@@ -521,14 +568,7 @@ export default function App() {
                       const r = playerAttack(character, save.stage.combat, 'weapon')
                       // win?
                       if (r.combat.enemy.hp <= 0) {
-                        const out = r.combat.onWin
-                        const c2 = r.c
-                        setSave((prev) => ({
-                          ...prev,
-                          character: c2,
-                          log: [...prev.log, { id: `log_${Date.now()}`, day: c2.day, text: r.text }, ...(out.logs ?? []).map((t) => ({ id: `log_${Date.now()}_${Math.random()}`, day: c2.day, text: t }))],
-                          stage: { kind: 'outcome', scene: { id: 'combat', category: 'Combat', title: 'Victory', body: '', choices: [] } as any, outcomeText: out.text },
-                        }))
+                        finalizeCombatOutcome({ c: r.c, combat: r.combat, actionText: r.text, out: r.combat.onWin, kind: 'win' })
                         return
                       }
                       // enemy turn
@@ -563,14 +603,7 @@ export default function App() {
                         if (save.stage.kind !== 'combat') return
                         const r = playerAttack(character, save.stage.combat, 'cantrip')
                         if (r.combat.enemy.hp <= 0) {
-                          const out = r.combat.onWin
-                          const c2 = r.c
-                          setSave((prev) => ({
-                            ...prev,
-                            character: c2,
-                            log: [...prev.log, { id: `log_${Date.now()}`, day: c2.day, text: r.text }, ...(out.logs ?? []).map((t) => ({ id: `log_${Date.now()}_${Math.random()}`, day: c2.day, text: t }))],
-                            stage: { kind: 'outcome', scene: { id: 'combat', category: 'Combat', title: 'Victory', body: '', choices: [] } as any, outcomeText: out.text },
-                          }))
+                          finalizeCombatOutcome({ c: r.c, combat: r.combat, actionText: r.text, out: r.combat.onWin, kind: 'win' })
                           return
                         }
                         const e = enemyTurn(r.c, { ...r.combat, enemy: { ...r.combat.enemy } })
@@ -598,14 +631,7 @@ export default function App() {
                           return
                         }
                         if (r.combat.enemy.hp <= 0) {
-                          const out = r.combat.onWin
-                          const c2 = r.c
-                          setSave((prev) => ({
-                            ...prev,
-                            character: c2,
-                            log: [...prev.log, { id: `log_${Date.now()}`, day: c2.day, text: r.text }, ...(out.logs ?? []).map((t) => ({ id: `log_${Date.now()}_${Math.random()}`, day: c2.day, text: t }))],
-                            stage: { kind: 'outcome', scene: { id: 'combat', category: 'Combat', title: 'Victory', body: '', choices: [] } as any, outcomeText: out.text },
-                          }))
+                          finalizeCombatOutcome({ c: r.c, combat: r.combat, actionText: r.text, out: r.combat.onWin, kind: 'win' })
                           return
                         }
                         const e = enemyTurn(r.c, { ...r.combat, enemy: { ...r.combat.enemy } })
@@ -656,13 +682,7 @@ export default function App() {
                       if (save.stage.kind !== 'combat') return
                       const r = playerRun(character, save.stage.combat)
                       if (r.combat.fleeProgress >= 100) {
-                        const out = r.combat.onFlee
-                        const c2 = character
-                        setSave((prev) => ({
-                          ...prev,
-                          log: [...prev.log, { id: `log_${Date.now()}`, day: c2.day, text: r.text }, ...(out.logs ?? []).map((t) => ({ id: `log_${Date.now()}_${Math.random()}`, day: c2.day, text: t }))],
-                          stage: { kind: 'outcome', scene: { id: 'combat', category: 'Combat', title: 'Escaped', body: '', choices: [] } as any, outcomeText: out.text },
-                        }))
+                        finalizeCombatOutcome({ c: character, combat: r.combat, actionText: r.text, out: r.combat.onFlee, kind: 'flee' })
                         return
                       }
                       const e = enemyTurn(character, r.combat)
@@ -879,6 +899,49 @@ export default function App() {
                 const weapon = weaponForClass(character.className)
                 const carried = character.inventory ?? []
 
+                const ITEM_LORE: Record<string, { title: string; body: string }> = {
+                  'Sigil-Shard': {
+                    title: 'Sigil-Shard',
+                    body: 'A broken key-segment pried from a dwarven socket. It hums faintly when held near carved runes.',
+                  },
+                  'Harmonic Lens': {
+                    title: 'Harmonic Lens',
+                    body: 'A bronze lens etched like a map. It warms when certain tones ring nearby—as if it remembers a route.',
+                  },
+                  'Anchor Seal': {
+                    title: 'Anchor Seal',
+                    body: 'Dense and warm as forged truth. The air steadies around it, like the mountain is being reminded how to hold itself.',
+                  },
+                  'Watch Writ (stamped)': {
+                    title: 'Watch Writ',
+                    body: 'A stamped writ from the Mountain Watch. It opens doors that would otherwise stay politely closed.',
+                  },
+                }
+
+                const inspect = (item: string) => {
+                  setItemInspect(item)
+                }
+
+                const longPressHandlers = (item: string) => ({
+                  onPointerDown: () => {
+                    if (pressTimer) window.clearTimeout(pressTimer)
+                    const t = window.setTimeout(() => inspect(item), 450)
+                    setPressTimer(t)
+                  },
+                  onPointerUp: () => {
+                    if (pressTimer) window.clearTimeout(pressTimer)
+                    setPressTimer(null)
+                  },
+                  onPointerCancel: () => {
+                    if (pressTimer) window.clearTimeout(pressTimer)
+                    setPressTimer(null)
+                  },
+                  onPointerLeave: () => {
+                    if (pressTimer) window.clearTimeout(pressTimer)
+                    setPressTimer(null)
+                  },
+                })
+
                 // Simple "equipped" heuristics (MVP):
                 // - Weapon is determined by class.
                 // - Up to 3 special items appear as equipped relics.
@@ -923,12 +986,33 @@ export default function App() {
                       ) : (
                         <div style={{ display: 'grid', gap: 8 }}>
                           {otherItems.map((it, idx) => (
-                            <div key={`${it}_${idx}`} className="bar" style={{ justifyContent: 'space-between' }}>
+                            <div
+                              key={`${it}_${idx}`}
+                              className="bar"
+                              style={{ justifyContent: 'space-between' }}
+                              {...longPressHandlers(it)}
+                              title="Long press for details"
+                            >
                               <div style={{ fontWeight: 800 }}>{it}</div>
+                              <div className="fine" style={{ opacity: 0.7 }}>Hold</div>
                             </div>
                           ))}
                         </div>
                       )}
+
+                      {itemInspect ? (
+                        <div style={{ marginTop: 12 }}>
+                          <div className="bar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ fontWeight: 900 }}>{(ITEM_LORE[itemInspect]?.title ?? itemInspect)}</div>
+                              <button className="ghost" onClick={() => setItemInspect(null)}>Close</button>
+                            </div>
+                            <div className="fine" style={{ opacity: 0.9 }}>
+                              {ITEM_LORE[itemInspect]?.body ?? 'No additional details yet.'}
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 )
