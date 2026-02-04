@@ -566,9 +566,9 @@ function maybeQueueSpineScene(c: Character, justFinishedSceneId: string): Charac
 
   const seen = new Set(c.campaign.seenSceneIds ?? [])
 
-  // Opening flow: Observatory -> Watchtower -> Stonewake
-  // This prevents the "suddenly you're in a dwarven ruin" feeling.
-  const spine: string[] = ['starfall.observatory', 'starfall.watchtower', 'starfall.stonewake']
+  // Opening flow: Observatory -> Hub -> Watchtower -> Stonewake
+  // This prevents the "suddenly you're in a dwarven ruin" feeling and adds agency.
+  const spine: string[] = ['starfall.observatory', 'starfall.hub_departure', 'starfall.watchtower', 'starfall.stonewake']
 
   // If we *just* finished one of these, queue the next if not seen.
   const idx = spine.indexOf(justFinishedSceneId)
@@ -580,6 +580,7 @@ function maybeQueueSpineScene(c: Character, justFinishedSceneId: string): Charac
   // If we're early and the next spine scene hasn't happened yet, queue it.
   // (Example: after a filler scene, pull us back toward the spine.)
   if (!seen.has('starfall.observatory')) return setNext(c, 'starfall.observatory')
+  if (!seen.has('starfall.hub_departure')) return setNext(c, 'starfall.hub_departure')
   if (!seen.has('starfall.watchtower')) return setNext(c, 'starfall.watchtower')
   if (!seen.has('starfall.stonewake')) return setNext(c, 'starfall.stonewake')
 
@@ -641,6 +642,7 @@ const ARC_SCENE_POOLS: Record<CampaignArcId, Record<1 | 2 | 3, Array<{ id: strin
   starfall: {
     1: [
       { id: 'starfall.observatory', weight: 4 },
+      { id: 'starfall.hub_departure', weight: 5 },
       { id: 'starfall.watchtower', weight: 2 },
       { id: 'starfall.stonewake', weight: 3 },
     ],
@@ -746,7 +748,7 @@ const SCENES: Record<string, Scene> = {
     'starfall.observatory',
     'Observatory',
     'The Low Comet',
-    'At Cliff Observatory, Master Astronomer Ilyra Voss holds a slate of star-charts against the lantern light. A red comet hangs too low in the sky, steady as a nail.\n\n“Skybreak Mountain is waking,” she says. “If the old wards fail, it will not just be the mountain that breaks.”',
+    'At Cliff Observatory, Master Astronomer Ilyra Voss holds a slate of star-charts against the lantern light. A red comet hangs too low in the sky, steady as a nail.\n\n“Skybreak Mountain is waking,” she says. “If the old wards fail, it will not just be the mountain that breaks.”\n\nOutside, the air tastes like iron. The comet does not move.',
     [
       {
         id: 'study',
@@ -785,6 +787,144 @@ const SCENES: Record<string, Scene> = {
         dc: 11,
         onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 20 }, 10), text: 'You pack quickly and leave before dawn. +20 XP.' }),
         onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 8), text: 'You rush and pay for it with a twisted ankle. -1 HP.' }),
+      },
+    ]
+  ),
+
+  'starfall.hub_departure': scene(
+    'starfall.hub_departure',
+    'Fork',
+    'A Choice With Teeth',
+    `Ilyra does not order you. She does not need to. She lays the facts out like bones.
+
+Skybreak Mountain holds an old dwarven machine—The Star-Fall Engine—meant to keep the sky from falling. Something below is holding the comet in place.
+
+If the Engine fails, the wards go with it. Then the mountain breaks. Then the people below learn what “impact” really means.
+
+You can feel the pull of it already: a quiet pressure behind the eyes, like the world leaning toward a bad decision.`,
+    [
+      {
+        id: 'go_now',
+        text: 'Go now. No speeches. No comfort.',
+        stat: 'CON',
+        dc: 12,
+        onSuccess: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 0 }, 'starfall_departed', true), 6),
+          text: 'You leave before dawn, while the city still pretends nothing is wrong.',
+          logs: ['You chose urgency over certainty.'],
+        }),
+        onMixed: (ch) => ({
+          c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 6),
+          text: 'You leave fast, but the cold finds a seam in your gear. -1 HP.',
+        }),
+        onFail: (ch) => ({
+          c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 5),
+          text: 'You push too hard. The road takes a small payment. -2 HP.',
+        }),
+      },
+      {
+        id: 'town',
+        text: 'Go to town first. Gather what you can. Pretend it helps.',
+        stat: 'WIS',
+        dc: 12,
+        onSuccess: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch, nextSceneId: 'starfall.town_prep' }, 'starfall_prepped', true), 4),
+          text: 'You choose preparation. It is not the same as safety, but it is something.',
+          logs: ['Next: Town prep'],
+        }),
+        onMixed: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch, nextSceneId: 'starfall.town_prep' }, 'starfall_prepped', true), 3),
+          text: 'You stall for supplies. The comet still doesn’t move.',
+          logs: ['Next: Town prep'],
+        }),
+        onFail: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch, nextSceneId: 'starfall.town_prep' }, 'starfall_prepped', true), 3),
+          text: 'You tell yourself you’re being smart. You might be. It doesn’t feel like it.',
+          logs: ['Next: Town prep'],
+        }),
+      },
+      {
+        id: 'walk',
+        text: 'Walk away. Let the mountain keep its secrets.',
+        stat: 'CHA',
+        dc: 13,
+        onSuccess: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch }, 'starfall_walked_away', true), 2),
+          text: 'You leave. People do that every day. The sky does not care what you believe.',
+          logs: ['Flag set: walked away'],
+        }),
+        onMixed: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch }, 'starfall_walked_away', true), 2),
+          text: 'You try to leave it behind. It follows anyway, like a headache you can’t sleep off.',
+          logs: ['Flag set: walked away'],
+        }),
+        onFail: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch }, 'starfall_walked_away', true), 2),
+          text: 'You walk away. It’s not cowardice. It’s denial with better posture.',
+          logs: ['Flag set: walked away'],
+        }),
+      },
+    ]
+  ),
+
+  'starfall.town_prep': scene(
+    'starfall.town_prep',
+    'Town',
+    'Things That Won’t Save You',
+    `The town is loud in the way dying places get loud: people trying to outtalk the shape of the future.
+
+Every shop has the same expression—open for business, closed for hope.
+
+You can buy time. You can buy rope. You cannot buy mercy.`,
+    [
+      {
+        id: 'rumors',
+        text: 'Buy drinks. Hear what fear sounds like.',
+        stat: 'CHA',
+        dc: 12,
+        onSuccess: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch }, 'starfall_rumors', true), 6),
+          text: 'You learn three things: the Watch is nervous, the Choir has been seen, and the mountain has started to hum at night.',
+          logs: ['Clue: the hum carries into town after midnight'],
+        }),
+        onMixed: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch }, 'starfall_rumors', true), 5),
+          text: 'You get the gist, but it costs more than it should. -1 gold.',
+          logs: ['Clue: black robes on the old road'],
+        }),
+        onFail: (ch) => ({
+          c: advanceArc({ ...ch, gold: Math.max(0, ch.gold - 1) }, 4),
+          text: 'You pay for stories and get opinions. -1 gold.',
+        }),
+      },
+      {
+        id: 'supplies',
+        text: 'Stock up. Rope, chalk, something sharp.',
+        stat: 'INT',
+        dc: 12,
+        onSuccess: (ch) => ({
+          c: advanceArc({ ...ch, inventory: [...ch.inventory, 'Rope', 'Chalk'] }, 6),
+          text: 'You leave with rope and chalk. Tools for surviving, not winning.',
+          logs: ['Items acquired: Rope, Chalk'],
+        }),
+        onMixed: (ch) => ({
+          c: advanceArc({ ...ch, inventory: [...ch.inventory, 'Rope'], gold: Math.max(0, ch.gold - 1) }, 5),
+          text: 'You get rope. The chalk costs extra. -1 gold.',
+          logs: ['Item acquired: Rope'],
+        }),
+        onFail: (ch) => ({
+          c: advanceArc({ ...ch, gold: Math.max(0, ch.gold - 1) }, 4),
+          text: 'You waste time and coin. The shelves are picked clean. -1 gold.',
+        }),
+      },
+      {
+        id: 'leave',
+        text: 'Leave town. Delay is a kind of decision.',
+        stat: 'CON',
+        dc: 11,
+        onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch }, 'starfall_left_town', true), 6), text: 'You head for the switchbacks. The air grows colder with each step.' }),
+        onMixed: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 5), text: 'You leave late and hike hard. -1 HP.' }),
+        onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 5), text: 'You push after sunset. The road takes its toll. -2 HP.' }),
       },
     ]
   ),
