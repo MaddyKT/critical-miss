@@ -875,17 +875,65 @@ export default function App() {
 
           {inventoryOpen ? (
             <ModalCard category={'Inventory'} title={'Inventory'}>
-              {character.inventory.length === 0 ? (
-                <div className="fine">Your inventory is empty (for now).</div>
-              ) : (
-                <div style={{ display: 'grid', gap: 8 }}>
-                  {character.inventory.map((it, idx) => (
-                    <div key={`${it}_${idx}`} className="bar" style={{ justifyContent: 'space-between' }}>
-                      <div style={{ fontWeight: 800 }}>{it}</div>
+              {(() => {
+                const weapon = weaponForClass(character.className)
+                const carried = character.inventory ?? []
+
+                // Simple "equipped" heuristics (MVP):
+                // - Weapon is determined by class.
+                // - Up to 3 special items appear as equipped relics.
+                const relics = carried.filter((x) => x && x !== weapon.name).slice(0, 3)
+                const otherItems = carried.filter((x) => x && x !== weapon.name && !relics.includes(x))
+
+                return (
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    <div className="equipGrid">
+                      <div className="equipSlot equipWeapon">
+                        <div className="equipLabel">Weapon</div>
+                        <div className="equipItem">{weapon.name}</div>
+                      </div>
+                      <div className="equipSlot equipArmor">
+                        <div className="equipLabel">Armor</div>
+                        <div className="equipItem equipEmpty">None</div>
+                      </div>
+                      <div className="equipSlot equipOffhand">
+                        <div className="equipLabel">Offhand</div>
+                        <div className="equipItem equipEmpty">Empty</div>
+                      </div>
+                      <div className="equipSlot equipRelic1">
+                        <div className="equipLabel">Relic</div>
+                        <div className={relics[0] ? 'equipItem' : 'equipItem equipEmpty'}>{relics[0] ?? 'Empty'}</div>
+                      </div>
+                      <div className="equipSlot equipRelic2">
+                        <div className="equipLabel">Relic</div>
+                        <div className={relics[1] ? 'equipItem' : 'equipItem equipEmpty'}>{relics[1] ?? 'Empty'}</div>
+                      </div>
+                      <div className="equipSlot equipRelic3">
+                        <div className="equipLabel">Relic</div>
+                        <div className={relics[2] ? 'equipItem' : 'equipItem equipEmpty'}>{relics[2] ?? 'Empty'}</div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+
+                    <div>
+                      <div className="fine" style={{ marginBottom: 8, opacity: 0.85 }}>
+                        Other items
+                      </div>
+                      {otherItems.length === 0 ? (
+                        <div className="fine">No unequipped items.</div>
+                      ) : (
+                        <div style={{ display: 'grid', gap: 8 }}>
+                          {otherItems.map((it, idx) => (
+                            <div key={`${it}_${idx}`} className="bar" style={{ justifyContent: 'space-between' }}>
+                              <div style={{ fontWeight: 800 }}>{it}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
+
               <div style={{ marginTop: 12 }}>
                 <button className="cm_button" onClick={() => setInventoryOpen(false)}>Close</button>
               </div>

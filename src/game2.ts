@@ -474,6 +474,10 @@ export function resolveRoll(
     entries.push(log(cNext.day, r.text))
     for (const extra of r.logs ?? []) entries.push(log(cNext.day, extra))
 
+    // Narrative spine (hybrid): ensure the opening act has a coherent flow.
+    // We softly force a few key scenes in order, then return to weighted randomness.
+    cNext = maybeQueueSpineScene(cNext, scene.id)
+
     // If an outcome causes HP loss due to an attacker, trigger combat instead of direct damage.
     // (Environmental damage like falling, cold water, fire, etc. can still be direct.)
     const hpLoss = hpBefore - cNext.hp
@@ -553,6 +557,32 @@ function enemyKindForScene(scene: Scene): 'thug' | 'hound' | 'rival' | 'cultist'
 
 function setNext(c: Character, nextSceneId: string | null): Character {
   return { ...c, nextSceneId }
+}
+
+function maybeQueueSpineScene(c: Character, justFinishedSceneId: string): Character {
+  // Only applies to Star-Fall and only if we haven't completed the spine.
+  if (c.campaign.arcId !== 'starfall') return c
+
+  const seen = new Set(c.campaign.seenSceneIds ?? [])
+
+  // Opening flow: Observatory -> Watchtower -> Stonewake
+  // This prevents the "suddenly you're in a dwarven ruin" feeling.
+  const spine: string[] = ['starfall.observatory', 'starfall.watchtower', 'starfall.stonewake']
+
+  // If we *just* finished one of these, queue the next if not seen.
+  const idx = spine.indexOf(justFinishedSceneId)
+  if (idx >= 0) {
+    const next = spine[idx + 1]
+    if (next && !seen.has(next)) return setNext(c, next)
+  }
+
+  // If we're early and the next spine scene hasn't happened yet, queue it.
+  // (Example: after a filler scene, pull us back toward the spine.)
+  if (!seen.has('starfall.observatory')) return setNext(c, 'starfall.observatory')
+  if (!seen.has('starfall.watchtower')) return setNext(c, 'starfall.watchtower')
+  if (!seen.has('starfall.stonewake')) return setNext(c, 'starfall.stonewake')
+
+  return c
 }
 
 function getFlag(c: Character, key: string): FlagValue | undefined {

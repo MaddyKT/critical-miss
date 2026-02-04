@@ -258,6 +258,60 @@ select {
   font-size: 13px;
 }
 
+/* Inventory (equipped layout) */
+.equipGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-areas:
+    "weapon armor offhand"
+    "relic1 relic2 relic3";
+  gap: 10px;
+}
+
+.equipSlot {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.18);
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+  min-height: 66px;
+}
+
+.equipWeapon { grid-area: weapon; }
+.equipArmor { grid-area: armor; }
+.equipOffhand { grid-area: offhand; }
+.equipRelic1 { grid-area: relic1; }
+.equipRelic2 { grid-area: relic2; }
+.equipRelic3 { grid-area: relic3; }
+
+.equipLabel {
+  font-size: 11px;
+  opacity: 0.75;
+  letter-spacing: 0.5px;
+}
+
+.equipItem {
+  font-weight: 900;
+  font-size: 13px;
+}
+
+.equipEmpty {
+  opacity: 0.55;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .equipGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "weapon weapon"
+      "armor offhand"
+      "relic1 relic2"
+      "relic3 relic3";
+  }
+}
+
 @media (max-width: 980px) {
   .game {
     grid-template-columns: 1fr;
