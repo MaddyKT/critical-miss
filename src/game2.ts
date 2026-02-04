@@ -595,6 +595,15 @@ function hasFlag(c: Character, key: string): boolean {
   return Boolean(getFlag(c, key))
 }
 
+function getDoom(c: Character): number {
+  return Number(getFlag(c, 'starfall_doom') ?? 0)
+}
+
+function incDoom(c: Character, delta = 1): Character {
+  const next = clamp(getDoom(c) + delta, 0, 6)
+  return setArcFlag(c, 'starfall_doom', next)
+}
+
 function setArcFlag(c: Character, key: string, value: FlagValue = true): Character {
   return { ...c, campaign: { ...c.campaign, flags: { ...c.campaign.flags, [key]: value } } }
 }
@@ -849,19 +858,19 @@ You can feel the pull of it already: a quiet pressure behind the eyes, like the 
         stat: 'CHA',
         dc: 13,
         onSuccess: (ch) => ({
-          c: advanceArc(setArcFlag({ ...ch }, 'starfall_walked_away', true), 2),
+          c: advanceArc(incDoom(setArcFlag({ ...ch, nextSceneId: 'starfall.walkaway_omen' }, 'starfall_walked_away', true), 1), 2),
           text: 'You leave. People do that every day. The sky does not care what you believe.',
-          logs: ['Flag set: walked away'],
+          logs: ['You walked away. Doom advances.'],
         }),
         onMixed: (ch) => ({
-          c: advanceArc(setArcFlag({ ...ch }, 'starfall_walked_away', true), 2),
+          c: advanceArc(incDoom(setArcFlag({ ...ch, nextSceneId: 'starfall.walkaway_omen' }, 'starfall_walked_away', true), 1), 2),
           text: 'You try to leave it behind. It follows anyway, like a headache you can’t sleep off.',
-          logs: ['Flag set: walked away'],
+          logs: ['You walked away. Doom advances.'],
         }),
         onFail: (ch) => ({
-          c: advanceArc(setArcFlag({ ...ch }, 'starfall_walked_away', true), 2),
+          c: advanceArc(incDoom(setArcFlag({ ...ch, nextSceneId: 'starfall.walkaway_omen' }, 'starfall_walked_away', true), 1), 2),
           text: 'You walk away. It’s not cowardice. It’s denial with better posture.',
-          logs: ['Flag set: walked away'],
+          logs: ['You walked away. Doom advances.'],
         }),
       },
     ]
@@ -925,6 +934,141 @@ You can buy time. You can buy rope. You cannot buy mercy.`,
         onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch }, 'starfall_left_town', true), 6), text: 'You head for the switchbacks. The air grows colder with each step.' }),
         onMixed: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 5), text: 'You leave late and hike hard. -1 HP.' }),
         onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 5), text: 'You push after sunset. The road takes its toll. -2 HP.' }),
+      },
+    ]
+  ),
+
+  'starfall.walkaway_omen': scene(
+    'starfall.walkaway_omen',
+    'Town',
+    'A Sky That Won’t Look Away',
+    `You make it three streets before the first ward-flare blooms over Skybreak.
+
+A silent ring of blue light climbs the mountain and dies.
+
+No one cheers. No one prays. People just… pause, like animals smelling smoke.
+
+The comet is still there. Closer now, if you let your eyes admit it.`,
+    [
+      {
+        id: 'return',
+        text: 'Turn back. You can’t un-know this.',
+        stat: 'WIS',
+        dc: 11,
+        onSuccess: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch, nextSceneId: 'starfall.watchtower' }, 'starfall_returned', true), 4),
+          text: 'You turn around. The decision is immediate. The dread is not.',
+          logs: ['You returned to the mountain.'],
+        }),
+        onMixed: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch, nextSceneId: 'starfall.watchtower' }, 'starfall_returned', true), 3),
+          text: 'You turn back, but you’ve already lost time you can’t earn back.',
+          logs: ['You returned… later.'],
+        }),
+        onFail: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch, nextSceneId: 'starfall.watchtower' }, 'starfall_returned', true), 3),
+          text: 'You tell yourself you’re being rational. Then you turn back anyway.',
+          logs: ['You returned to the mountain.'],
+        }),
+      },
+      {
+        id: 'ignore',
+        text: 'Keep walking. Let tomorrow deal with tomorrow.',
+        stat: 'CHA',
+        dc: 12,
+        onSuccess: (ch) => ({
+          c: advanceArc(setArcFlag({ ...incDoom(ch, 1), nextSceneId: getDoom(ch) >= 2 ? 'starfall.walkaway_refugees' : 'starfall.walkaway_refugees' }, 'starfall_walked_away', true), 3),
+          text: 'You keep walking. The ward-flare fades. The knot behind your eyes tightens.',
+          logs: ['Doom advances again.'],
+        }),
+        onMixed: (ch) => ({
+          c: advanceArc(setArcFlag({ ...incDoom(ch, 1), nextSceneId: 'starfall.walkaway_refugees' }, 'starfall_walked_away', true), 2),
+          text: 'You walk faster, like speed could change the shape of the sky.',
+          logs: ['Doom advances again.'],
+        }),
+        onFail: (ch) => ({
+          c: advanceArc(setArcFlag({ ...incDoom(ch, 1), nextSceneId: 'starfall.walkaway_refugees' }, 'starfall_walked_away', true), 2),
+          text: 'You keep going. The town keeps breathing. It doesn’t mean it’s safe.',
+          logs: ['Doom advances again.'],
+        }),
+      },
+    ]
+  ),
+
+  'starfall.walkaway_refugees': scene(
+    'starfall.walkaway_refugees',
+    'Road',
+    'The First Broken Things',
+    `By nightfall, a patrol staggers down from the switchbacks.
+
+Two Watch are missing. One has blood dried black on his collar. The others won’t meet your eyes.
+
+“Rockslide,” someone says. “Singing stone.”
+
+Nobody believes the words. They’re just sounds people make when they don’t want the real ones.`,
+    [
+      {
+        id: 'help',
+        text: 'Help them. Bind wounds. Carry packs. Buy time with your hands.',
+        stat: 'CON',
+        dc: 12,
+        onSuccess: (ch) => ({
+          c: advanceArc(setArcFlag({ ...incDoom(ch, 1), nextSceneId: 'starfall.watchtower' }, 'starfall_helped_refugees', true), 5),
+          text: 'You help. It matters. It also costs time. The mountain does not care why you’re late.',
+          logs: ['You helped the injured. Doom advances.'],
+        }),
+        onMixed: (ch) => ({
+          c: advanceArc(setArcFlag({ ...incDoom({ ...ch, hp: clamp(ch.hp - 1, 0, ch.maxHp) }, 1), nextSceneId: 'starfall.watchtower' }, 'starfall_helped_refugees', true), 4),
+          text: 'You help until your arms shake. -1 HP. Doom advances.',
+          logs: ['You helped the injured.'],
+        }),
+        onFail: (ch) => ({
+          c: advanceArc(setArcFlag({ ...incDoom({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 1), nextSceneId: 'starfall.watchtower' }, 'starfall_helped_refugees', true), 4),
+          text: 'You help and get hurt for it. -2 HP. Doom advances.',
+          logs: ['You helped the injured.'],
+        }),
+      },
+      {
+        id: 'return',
+        text: 'Return to the mountain. Late is still better than never.',
+        stat: 'WIS',
+        dc: 11,
+        onSuccess: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch, nextSceneId: 'starfall.watchtower' }, 'starfall_returned', true), 5),
+          text: 'You shoulder your pack and go. The road feels steeper than it did yesterday.',
+          logs: ['You returned to the mountain.'],
+        }),
+        onMixed: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch, nextSceneId: 'starfall.watchtower' }, 'starfall_returned', true), 4),
+          text: 'You go back with the taste of guilt in your mouth. It won’t feed you up there.',
+          logs: ['You returned to the mountain.'],
+        }),
+        onFail: (ch) => ({
+          c: advanceArc(setArcFlag({ ...ch, nextSceneId: 'starfall.watchtower' }, 'starfall_returned', true), 4),
+          text: 'You go back because there is nothing else to do that still counts.',
+          logs: ['You returned to the mountain.'],
+        }),
+      },
+      {
+        id: 'vanish',
+        text: 'Disappear into the night. If it ends, you won’t have to watch.',
+        stat: 'CHA',
+        dc: 13,
+        onSuccess: (ch) => ({
+          c: advanceArc(setArcFlag({ ...incDoom(ch, 1) }, 'starfall_vanished', true), 2),
+          text: 'You vanish. The comet does not.',
+          logs: ['You delayed again. Doom advances.'],
+        }),
+        onMixed: (ch) => ({
+          c: advanceArc(setArcFlag({ ...incDoom(ch, 1) }, 'starfall_vanished', true), 2),
+          text: 'You try to disappear. The dread follows like a stray dog.',
+          logs: ['Doom advances.'],
+        }),
+        onFail: (ch) => ({
+          c: advanceArc(setArcFlag({ ...incDoom(ch, 1) }, 'starfall_vanished', true), 2),
+          text: 'You hide. You still hear the mountain, faint as tinnitus.',
+          logs: ['Doom advances.'],
+        }),
       },
     ]
   ),
