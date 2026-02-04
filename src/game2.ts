@@ -436,6 +436,11 @@ export function resolveRoll(
   const bonus = modFromStat(c.stats[choice.stat])
   const total = roll + bonus
 
+  // Doom clock: in Star-Fall, delay makes everything harder.
+  const doom = scene.id.startsWith('starfall.') ? getDoom(c) : 0
+  const doomDcMod = doom >= 5 ? 2 : doom >= 3 ? 1 : 0
+  const effectiveDc = choice.dc + doomDcMod
+
   // Tiered outcomes (hybrid narrative):
   // - crit fail: natural 1
   // - fail: below DC
@@ -444,10 +449,10 @@ export function resolveRoll(
   // - crit success: natural 20 (handled via bonus XP/flags in scene outcomes if desired)
   const isCritFail = roll === 1
   const isCritSuccess = roll === 20
-  const margin = total - choice.dc
+  const margin = total - effectiveDc
   const mixedEligible = Boolean(choice.onMixed)
-  const mixed = !isCritFail && total >= choice.dc && mixedEligible && margin <= 2 && !isCritSuccess
-  const success = !isCritFail && total >= choice.dc && !mixed
+  const mixed = !isCritFail && total >= effectiveDc && mixedEligible && margin <= 2 && !isCritSuccess
+  const success = !isCritFail && total >= effectiveDc && !mixed
 
   // advance time on resolution
   c.day += 1
@@ -456,7 +461,7 @@ export function resolveRoll(
   c = advanceArc(c, 8)
 
   const entries: GameLogEntry[] = []
-  const breakdown = `d20 ${roll} + ${choice.stat} ${bonus >= 0 ? `+${bonus}` : bonus} = ${total} vs DC ${choice.dc}`
+  const breakdown = `d20 ${roll} + ${choice.stat} ${bonus >= 0 ? `+${bonus}` : bonus} = ${total} vs DC ${effectiveDc}${doomDcMod ? ` (doom +${doomDcMod}, doom=${doom})` : ''}`
 
   // Light "memory" reinforcement: if the player repeats a tactic, slightly raise DC.
   // (Keeps hybrid feel: continuity + variety, without hard-locking choices.)
@@ -488,7 +493,8 @@ export function resolveRoll(
       // restore HP; the fight will determine damage
       cNext = { ...cNext, hp: hpBefore }
 
-      const enemyKind = enemyKindForScene(scene)
+      let enemyKind = enemyKindForScene(scene)
+      if (scene.id.startsWith('starfall.') && getDoom(cNext) >= 3) enemyKind = 'rival'
       ;(cNext.flags as any).__startCombat = startCombat({
         c: cNext,
         enemyKind,
@@ -497,7 +503,7 @@ export function resolveRoll(
         onFlee: { text: 'You escape. The story continues with your breath still in your chest.', logs: ['Fled combat'] },
       })
 
-      entries.push(log(cNext.day, 'Combat triggered.'))
+      entries.push(log(cNext.day, `Combat triggered. ${scene.id.startsWith('starfall.') && getDoom(cNext) >= 3 ? '(The mountain is late and angry.)' : ''}`))
     }
 
     // Apply leveling after any XP changes.
@@ -1249,7 +1255,38 @@ Nobody believes the words. They’re just sounds people make when they don’t w
     'The Engine Heart',
     'The Star-Fall Engine fills a chamber the size of a chapel—bronze rings, stone columns, and runes cut like instructions. The Black Choir stands in a wide circle, chanting in measured breaths.\n\nThree sockets wait at the central console.',
     [
-      { id: 'keys', text: 'Set the keys and stabilize the engine', stat: 'INT', dc: 15, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 100, gold: ch.gold + 12 }, 24), text: 'You fit the pieces where they belong and turn the sequence back into safety. The hum steadies. The comet holds. +12 gold, +100 XP.', logs: ['Campaign complete: Star-Fall Engine'] }), onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 4, 0, ch.maxHp) }, 14), text: 'The console kicks back with heat and force. The chamber tilts for a heartbeat. -4 HP.' }) },
+      {
+        id: 'keys',
+        text: 'Set the keys and stabilize the engine',
+        stat: 'INT',
+        dc: 15,
+        onSuccess: (ch) => {
+          const doom = getDoom(ch)
+          if (doom >= 5) {
+            return {
+              c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 90, gold: ch.gold + 8, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 'starfall_end_costly', true), 24),
+              text: 'You set the keys and force the sequence back into alignment. The hum steadies—barely. Something cracks inside the mountain like a joint giving out. The comet holds. -2 HP, +8 gold, +90 XP.',
+              logs: ['Campaign complete: Star-Fall Engine (costly)'],
+            }
+          }
+          if (doom >= 3) {
+            return {
+              c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 100, gold: ch.gold + 10 }, 'starfall_end_brutal', true), 24),
+              text: 'You fit the pieces where they belong and turn the sequence back into safety. The hum steadies. The comet holds. Below you, the wards flare like a dying thing refusing to quit. +10 gold, +100 XP.',
+              logs: ['Campaign complete: Star-Fall Engine'],
+            }
+          }
+          return {
+            c: advanceArc(setArcFlag({ ...ch, xp: ch.xp + 110, gold: ch.gold + 12 }, 'starfall_end_clean', true), 24),
+            text: 'You fit the pieces where they belong and turn the sequence back into safety. The hum steadies. The comet holds. For the first time in days, the air stops tasting like metal. +12 gold, +110 XP.',
+            logs: ['Campaign complete: Star-Fall Engine'],
+          }
+        },
+        onFail: (ch) => ({
+          c: advanceArc({ ...ch, hp: clamp(ch.hp - 4, 0, ch.maxHp) }, 14),
+          text: 'The console kicks back with heat and force. The chamber tilts for a heartbeat. -4 HP.',
+        }),
+      },
       { id: 'break', text: 'Break the Choir’s circle', stat: 'STR', dc: 13, onSuccess: (ch) => ({ c: advanceArc(setArcFlag({ ...ch, flags: { ...ch.flags, __startCombat: startCombat({ c: ch, enemyKind: 'rival', onWin: { text: 'You break their line and buy the engine time to recover.', logs: ['Combat won: Engine Heart'] }, onLose: { text: 'They drag you down as the chant continues.', logs: ['Combat lost: Engine Heart'] }, onFlee: { text: 'You escape the circle and regroup behind the console.', logs: ['Fled: Engine Heart'] } }) as any } }, 'starfall_final_fight'), 14), text: 'You step into the circle and meet steel with steel.' }),
         onFail: (ch) => ({ c: advanceArc({ ...ch, hp: clamp(ch.hp - 2, 0, ch.maxHp) }, 10), text: 'A blade finds you in the crush. -2 HP.' }) },
       { id: 'counter', text: 'Speak the counter-words carved into the stone', stat: 'WIS', dc: 14, onSuccess: (ch) => ({ c: advanceArc({ ...ch, xp: ch.xp + 60 }, 14), text: 'You match their rhythm with older words. The chanting falters. The engine’s hum deepens. +60 XP.' }),
