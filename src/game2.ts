@@ -1086,7 +1086,7 @@ Nobody believes the words. They’re just sounds people make when they don’t w
     'starfall.watchtower',
     'Watchtower',
     'Captain Pike',
-    'The Mountain Watch keeps a stone tower above the switchbacks. Captain Jorren Pike meets you at the door, eyes on the sky and hand on a spear.\n\n“We hold the road,” he says. “You go higher. If you hear the stone start to sing, don’t stand under anything you like.”',
+    'The Mountain Watch keeps a stone tower above the switchbacks. Captain Jorren Pike meets you at the door, eyes on the sky and hand on a spear.\n\n“We hold the road,” Pike says. “That’s all we can promise.”\nHe nods uphill. “If you’re going to stop this, it won’t be from down here.”\nHis eyes flick to the sky. “If the stone starts to sing, get out from under it. The mountain gives warnings right before it takes.”',
     [
       {
         id: 'earn',
