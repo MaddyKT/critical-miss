@@ -570,6 +570,9 @@ function maybeQueueSpineScene(c: Character, justFinishedSceneId: string): Charac
   // Only applies to Star-Fall and only if we haven't completed the spine.
   if (c.campaign.arcId !== 'starfall') return c
 
+  // Respect explicit follow-ups set by scene outcomes (e.g., town prep, walk-away consequences).
+  if (c.nextSceneId) return c
+
   const seen = new Set(c.campaign.seenSceneIds ?? [])
 
   // Opening flow: Observatory -> Hub -> Watchtower -> Stonewake
